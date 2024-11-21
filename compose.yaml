@@ -1,0 +1,6 @@
+services:
+  app:
+    image: inventory-manager-frontend
+    container_name: inventory-manager-frontend
+    ports:
+      - "3000:3000"
