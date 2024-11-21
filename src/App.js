@@ -68,8 +68,8 @@ function Board({ xDimension, yDimension, xIsNext, squares, onPlay }) {
 }
 
 export default function Game() {
-  const xDimension = 10;
-  const yDimension = 4;
+  const xDimension = 4;
+  const yDimension = 10;
   const [history, setHistory] = useState([Array(xDimension * yDimension).fill(null)]);
   const [currentMove, setCurrentMove] = useState(0);
   const xIsNext = currentMove % 2 === 0;
@@ -115,90 +115,69 @@ export default function Game() {
 
 function calculateWinner(squares, xDimension, yDimension) {
 
+
+  function gridCoordinatesToSquareIndex(i, j) {
+    return i + j * xDimension
+  }
+
+  function indexInBounds(index) {
+    if (index < 0 || index > xDimension * yDimension) {
+      return false;
+    }
+    return true;
+  }
+
+  function solutionValid(solution) {
+    for (let index = 0; index < solution.length; index++) {
+      if (!indexInBounds(solution[index])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  let possible_solutions = [];
+
+  for (let x = 0; x < xDimension; x++) {
+    for (let y = 0; y < yDimension; y++) {
+
+      if (x === 0) {
+        possible_solutions.push( 
+          [...Array(xDimension)].map((_, i) => {
+            return gridCoordinatesToSquareIndex(x+i, y  , xDimension) // -
+          })
+        )
+        possible_solutions.push( 
+          [...Array(xDimension)].map((_, i) => {
+            return gridCoordinatesToSquareIndex(x+i, y+i, xDimension) // \
+          })
+        )
+        possible_solutions.push( 
+          [...Array(xDimension)].map((_, i) => {
+            return gridCoordinatesToSquareIndex(x+i, y-i, xDimension) // /
+          })
+        )
+      } else if (y === 0) {
+        possible_solutions.push([...Array(yDimension)].map((_, j) => {
+          return gridCoordinatesToSquareIndex(x, y+j, xDimension) // |
+        }))
+      }
+
+    }
+  }
+
   let solutions = [];
-
-  // Horizontal solutions
-  for (let j = 0; j < yDimension; j++) {
-    solutions.push([...Array(xDimension)].map((_, i) => {
-      return [j * xDimension + i];
-    }));
-  }
-
-  // Vertical solutions
-  for (let i = 0; i < xDimension; i++) {
-    solutions.push([...Array(yDimension)].map((_, j) => {
-      return [j * xDimension + i];
-    }));
-  }
-
-  // Diagonal solutions
-  if (xDimension > yDimension) {
-    // For \ shaped solutions
-    for (let i = 0; i < xDimension; i++) {
-      const solution = [...Array(yDimension)].map((_, j) => {
-        let index = xDimension * j + i + j;
-        if (index < xDimension * yDimension) {
-          return [index];
-        }
-        return null;
-      });
-      if (!solution.includes(null)) {
-        solutions.push(solution);
-      }
+  possible_solutions.forEach((solution) => {
+    if (solutionValid(solution)) {
+      solutions.push(solution);
     }
-    // For / shaped solutions
-    for (let i = 0; i < xDimension - yDimension + 1; i++) {
-      const solution = [...Array(yDimension)].map((_, j) => {
-        let index = xDimension * yDimension - 1 - (xDimension - 1) * (j + 1) + i;
-        if (index < xDimension * yDimension) {
-          return [index];
-        }
-        return null;
-      });
-      if (!solution.includes(null)) {
-        solutions.push(solution);
-      }
-    }
-  } else {
-    // For \ shaped solutions
-    for (let j = 0; j < yDimension; j++) {
-      const solution = [...Array(xDimension)].map((_, i) => {
-        let index = xDimension * j + i * (xDimension + 1);
-        if (index < xDimension * yDimension) {
-          return [index];
-        }
-        return null;
-      });
-      if (!solution.includes(null)) {
-        solutions.push(solution);
-      }
-    }
-    // For / shaped solutions
-    for (let j = 0; j < yDimension; j++) {
-      const solution = [...Array(xDimension)].map((_, i) => {
-        let index = xDimension * i + xDimension - i - 1 + xDimension * j;
-        if (index < xDimension * yDimension) {
-          return [index];
-        }
-        return null;
-      });
-      if (!solution.includes(null)) {
-        solutions.push(solution);
-      }
-    }
-  }
-
-
-
-
-  console.log(solutions);
-
+  });
 
   for (let i = 0; i < solutions.length; i++) {
-
+    let solution = solutions[i];
     let values = [];
 
-    solutions[i].forEach((index) => {
+    solution.forEach((index) => {
       values.push(squares[index]);
     });
 
@@ -209,8 +188,6 @@ function calculateWinner(squares, xDimension, yDimension) {
     const allEqual = values.every((value, _, arr) => value === arr[0]);
 
     if (allEqual) {
-      console.log(values);
-      console.log("All equal!");
       return values[0];
     }
 
