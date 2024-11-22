@@ -97,7 +97,7 @@ function Board({ xDimension, yDimension, xIsNext, squares, onPlay }) {
   );
 }
 
-export function Game({ bearerToken }) {
+export function Game() {
   const [xDimension, setXDimension] = useState(3);
   const [yDimension, setYDimension] = useState(3);
   const [history, setHistory] = useState([Array(xDimension * yDimension).fill(null)]);
@@ -114,6 +114,7 @@ export function Game({ bearerToken }) {
   }
 
   useEffect(() => {
+    console.log("Loading item data");
     fetchData();
   }, []);
 
@@ -229,9 +230,6 @@ export function Game({ bearerToken }) {
       <Row>
         <Col>
           <ItemSection itemData={items}></ItemSection>
-        </Col>
-        <Col>
-          {bearerToken}
         </Col>
       </Row>
     </Container>

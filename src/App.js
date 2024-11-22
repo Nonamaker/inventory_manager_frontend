@@ -7,10 +7,11 @@ import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 
 
-import { BrowserRouter, Routes, Route } from "react-router";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router";
 
 
-import { AuthContextProvider, authContext } from './contexts';
+import { authContext } from './contexts';
+import { PrivateRoute } from './PrivateRoute.js';
 
 
 export function Login() {
@@ -19,9 +20,10 @@ export function Login() {
   const [password, setPassword] = useState("");
 
   const context = useContext(authContext);
+  const navigate = useNavigate();
 
-  const attemptLogin = async () => {
-    let res = await fetch(
+  const attemptLogin = () => {
+    fetch(
       'http://192.168.1.10/login',
       {
         method: "POST",
@@ -34,11 +36,23 @@ export function Login() {
           password: password
         })
       }
-    );
-    const data = await res.json();
-    context.setBearerToken(data.accessToken);
+    )
+    .then(async (response) => {
+      if (response.status === 200) {
+          const data = await response.json();
+          console.log("Logging in");
+          context.setBearerToken(data.accessToken);
+          context.setAuthenticated(true);
+          navigate("/");
+      } else {
+        console.log("Logging out");
+        context.setBearerToken("");
+        context.setAuthenticated(false);
+      }
+    });
   }
 
+  console.log("Rendering Login");
 
   return (
     <>
@@ -46,7 +60,6 @@ export function Login() {
         <Row>
           <Col className="text-center">
             <h3>Login</h3>
-            <h5>{context.bearerToken}</h5>
           </Col>
         </Row>
         <Row>
@@ -89,28 +102,26 @@ export function Login() {
 
 export function Home() {
   
-  const context = useContext(authContext);
-
   return (
     <>
       <h3>Home</h3>
-      <div>
-        {context.bearerToken}
-      </div>
     </>
   )
 }
 
 export function App() {
 
+  const context = useContext(authContext);
+
   return (
-    <AuthContextProvider>
+      context.contextLoaded ? (
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route exact path="/" element={<PrivateRoute />} >
+            <Route exact path="/" element={<Home />} />
+          </Route>
           <Route path="/login" element={<Login />} />
         </Routes>
-      </BrowserRouter>
-    </AuthContextProvider>
+      </BrowserRouter> ) : null
   )
 }
