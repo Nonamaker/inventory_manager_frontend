@@ -1,5 +1,11 @@
 import { useState } from 'react';
 
+import Container from 'react-bootstrap/Container';
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
+import Form from 'react-bootstrap/Form';
+import { InputGroup, ListGroup } from 'react-bootstrap';
+
 function Square({ value, onSquareClick }) {
   return (
     <button
@@ -52,7 +58,7 @@ function Board({ xDimension, yDimension, xIsNext, squares, onPlay }) {
     });
 
     return (
-      <div key={j} className="board-row">
+      <div key={j} className="board-row" >
         {boardSquares}
       </div>
     );
@@ -61,15 +67,23 @@ function Board({ xDimension, yDimension, xIsNext, squares, onPlay }) {
 
   return (
     <>
-      <div className="status">{status}</div>
-      {boardRows}
+      <Row>
+        <Col>
+          <h3>{status}</h3>
+        </Col>
+      </Row>
+      <Row>
+        <Col >
+          {boardRows}
+        </Col>
+      </Row>
     </>
   );
 }
 
 export default function Game() {
-  const xDimension = 4;
-  const yDimension = 10;
+  const [xDimension, setXDimension] = useState(3);
+  const [yDimension, setYDimension] = useState(3);
   const [history, setHistory] = useState([Array(xDimension * yDimension).fill(null)]);
   const [currentMove, setCurrentMove] = useState(0);
   const xIsNext = currentMove % 2 === 0;
@@ -81,8 +95,13 @@ export default function Game() {
     setCurrentMove(nextHistory.length - 1);
   }
 
-  function jumpTo(nextMove) {
-    setCurrentMove(nextMove);
+  function jumpTo(move) {
+    setCurrentMove(move);
+  }
+
+  function reset() {
+    setHistory([Array(xDimension * yDimension).fill(null)]);
+    setCurrentMove(0);
   }
 
   const moves = history.map((_, move) => {
@@ -95,21 +114,94 @@ export default function Game() {
       description = 'Go to game start';
     }
     return (
-      <li key={move}>
-        <button onClick={() => jumpTo(move)}>{description}</button>
-      </li>
+      <ListGroup>
+        <ListGroup.Item
+          key={move}
+          variant="secondary"
+          action
+          onClick={() => jumpTo(move)}
+          active={move === currentMove ? "active" : "" }
+        >
+        {description}
+        </ListGroup.Item>
+      </ListGroup>
     );
   });
 
   return (
-    <div className="game">
-      <div className="game-board">
-        <Board xDimension={xDimension} yDimension={yDimension} xIsNext={xIsNext} squares={currentSquares} onPlay={handlePlay} />
-      </div>
-      <div className="game-info">
-        <ol>{moves}</ol>
-      </div>
-    </div>
+    <Container fluid>
+      <Row>
+        <Col md={{ span: 3, offset: 3}}>
+          <InputGroup>
+            <InputGroup.Text>X</InputGroup.Text>
+            <Form.Control
+              type="number"
+              name="xDimension"
+              value={xDimension}
+              disabled = {currentMove > 0 ? "disabled" : "" }
+              onChange={(e) => {
+                let value = Number(e.target.value);
+                if (value < 1) {
+                  value = 1;
+                } else if (value > 50) {
+                  value = 50;
+                }
+                setXDimension(value);
+                reset();
+              }}
+            />
+          </InputGroup>
+        </Col>
+        <Col md={{ span: 3}}>
+          <InputGroup>
+            <InputGroup.Text>Y</InputGroup.Text>
+            <Form.Control
+              type="number"
+              name="yDimension"
+              value={yDimension}
+              disabled = {currentMove > 0 ? "disabled" : "" }
+              onChange={(e) => {
+                let value = Number(e.target.value);
+                if (value < 1) {
+                  value = 1;
+                } else if (value > 50) {
+                  value = 50;
+                }
+                setYDimension(value);
+                reset();
+              }}
+            />
+          </InputGroup>
+        </Col>
+      </Row>
+      <Row>
+        <Col className="text-center">
+          <Board
+            xDimension={xDimension}
+            yDimension={yDimension}
+            xIsNext={xIsNext}
+            squares={currentSquares}
+            onPlay={handlePlay}
+          />
+        </Col>
+      </Row>
+      <Row>
+        <Col md="3">
+          <ListGroup>
+            <ListGroup.Item
+              key={0}
+              variant="secondary"
+              action
+              onClick={() => reset()}
+            >
+            Reset Game
+            </ListGroup.Item>
+          </ListGroup>
+          {moves}
+        </Col>
+      </Row>
+    </Container>
+    
   );
 }
 
@@ -136,29 +228,30 @@ function calculateWinner(squares, xDimension, yDimension) {
     return true;
   }
 
-  let possible_solutions = [];
+  let possibleSolutions = [];
 
   for (let x = 0; x < xDimension; x++) {
     for (let y = 0; y < yDimension; y++) {
 
       if (x === 0) {
-        possible_solutions.push( 
+        possibleSolutions.push( 
           [...Array(xDimension)].map((_, i) => {
             return gridCoordinatesToSquareIndex(x+i, y  , xDimension) // -
           })
         )
-        possible_solutions.push( 
+        possibleSolutions.push( 
           [...Array(xDimension)].map((_, i) => {
             return gridCoordinatesToSquareIndex(x+i, y+i, xDimension) // \
           })
         )
-        possible_solutions.push( 
+        possibleSolutions.push( 
           [...Array(xDimension)].map((_, i) => {
             return gridCoordinatesToSquareIndex(x+i, y-i, xDimension) // /
           })
         )
-      } else if (y === 0) {
-        possible_solutions.push([...Array(yDimension)].map((_, j) => {
+      }
+      if (y === 0) {
+        possibleSolutions.push([...Array(yDimension)].map((_, j) => {
           return gridCoordinatesToSquareIndex(x, y+j, xDimension) // |
         }))
       }
@@ -166,8 +259,11 @@ function calculateWinner(squares, xDimension, yDimension) {
     }
   }
 
+  let possibleSolutionsSet = new Set(possibleSolutions.map(JSON.stringify));
+  let uniquePossibleSolutions = Array.from(possibleSolutionsSet).map(JSON.parse);
+
   let solutions = [];
-  possible_solutions.forEach((solution) => {
+  uniquePossibleSolutions.forEach((solution) => {
     if (solutionValid(solution)) {
       solutions.push(solution);
     }
