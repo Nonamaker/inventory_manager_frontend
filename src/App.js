@@ -1,10 +1,27 @@
 import { useState } from 'react';
+import { useEffect } from 'react';
 
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Form from 'react-bootstrap/Form';
 import { InputGroup, ListGroup } from 'react-bootstrap';
+
+
+function ItemSection({ itemData }) {
+
+  const items = itemData.map((item) => {
+    return (
+      <div key={item.id}>
+        {item.name} - {item.description}
+      </div>
+    )
+  });
+
+  return (
+    items
+  )
+}
 
 function Square({ value, onSquareClick }) {
   return (
@@ -89,6 +106,18 @@ export default function Game() {
   const xIsNext = currentMove % 2 === 0;
   const currentSquares = history[currentMove];
 
+  const [items, setItems] = useState([]);
+
+  const fetchData = async () => {
+    let res = await fetch('http://192.168.1.10/api/inventoryitems');
+    const data = await res.json();
+    setItems(data);
+  }
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   function handlePlay(nextSquares) {
     const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
     setHistory(nextHistory);
@@ -114,17 +143,15 @@ export default function Game() {
       description = 'Go to game start';
     }
     return (
-      <ListGroup>
-        <ListGroup.Item
-          key={move}
-          variant="secondary"
-          action
-          onClick={() => jumpTo(move)}
-          active={move === currentMove ? "active" : "" }
-        >
-        {description}
-        </ListGroup.Item>
-      </ListGroup>
+      <ListGroup.Item
+        key={move}
+        variant="secondary"
+        action
+        onClick={() => jumpTo(move)}
+        active={move === currentMove ? "active" : "" }
+      >
+      {description}
+      </ListGroup.Item>
     );
   });
 
@@ -186,18 +213,23 @@ export default function Game() {
         </Col>
       </Row>
       <Row>
-        <Col md="3">
+        <Col md="3">          
           <ListGroup>
             <ListGroup.Item
-              key={0}
+              key="-1"
               variant="secondary"
               action
               onClick={() => reset()}
             >
             Reset Game
             </ListGroup.Item>
+            {moves}
           </ListGroup>
-          {moves}
+        </Col>
+      </Row>
+      <Row>
+        <Col>
+          <ItemSection itemData={items}></ItemSection>
         </Col>
       </Row>
     </Container>
