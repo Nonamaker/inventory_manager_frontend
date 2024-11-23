@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
@@ -40,19 +40,12 @@ export function Login() {
     .then(async (response) => {
       if (response.status === 200) {
           const data = await response.json();
-          console.log("Logging in");
           context.setBearerToken(data.accessToken);
           context.setAuthenticated(true);
           navigate("/");
-      } else {
-        console.log("Logging out");
-        context.setBearerToken("");
-        context.setAuthenticated(false);
       }
     });
   }
-
-  console.log("Rendering Login");
 
   return (
     <>
@@ -100,6 +93,19 @@ export function Login() {
   )
 }
 
+function Logout() {
+
+  const context = useContext(authContext);
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    context.setBearerToken("");
+    context.setAuthenticated("");  
+  }, []);
+
+  navigate("/login");
+}
+
 export function Home() {
   
   return (
@@ -121,6 +127,7 @@ export function App() {
             <Route exact path="/" element={<Home />} />
           </Route>
           <Route path="/login" element={<Login />} />
+          <Route path="/logout" element={<Logout />} />
         </Routes>
       </BrowserRouter> ) : null
   )

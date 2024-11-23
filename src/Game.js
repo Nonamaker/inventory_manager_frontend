@@ -114,7 +114,6 @@ export function Game() {
   }
 
   useEffect(() => {
-    console.log("Loading item data");
     fetchData();
   }, []);
 

@@ -12,18 +12,14 @@ export function AuthContextProvider({ children }) {
 
   // Local Storage: setting & getting data
   useEffect(() => {
-    console.log("Loading bearerToken");
     const bearerTokenData = JSON.parse(localStorage.getItem('bearerToken'));
     if (bearerTokenData) {
-      console.log("bearerToken loaded from local storage");
       setBearerToken(bearerTokenData);
     }
   }, []);
   useEffect(() => {
-    console.log("Loading authenticated");
     const authenticatedData = JSON.parse(localStorage.getItem('authenticated'));
     if (authenticatedData) {
-      console.log("authenticated loaded from local storage");
       setAuthenticated(authenticatedData);
     }
   }, []);
