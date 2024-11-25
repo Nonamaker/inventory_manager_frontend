@@ -12,6 +12,8 @@ import { authContext } from './contexts';
 import { PrivateRoute } from './PrivateRoute.js';
 import { Game } from './Game.js';
 
+import { useParams } from "react-router";
+
 import {Login, Logout, Register} from './Authentication.js';
 
 
@@ -23,7 +25,7 @@ export function AppNavbar() {
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto">
-            <Nav.Link href="/characters">Characters</Nav.Link>
+            <Nav.Link href="/inventories">Inventories</Nav.Link>
             <NavDropdown title="Profile" id="basic-nav-dropdown">
               <NavDropdown.Item href="/settings">Settings</NavDropdown.Item>
               <NavDropdown.Divider />
@@ -48,6 +50,145 @@ export function Home() {
   )
 }
 
+function Inventory() {
+  let params = useParams();
+  const inventoryId = params.id;
+  
+  const [items, setItems] = useState([]);
+  const [itemName, setItemName] = useState("");
+  const [itemDescription, setItemDescription] = useState("");
+
+  const context = useContext(authContext);
+
+  useEffect(() => {
+    getInventoryContents();
+  }, []);
+
+  const getInventoryContents = async () => {
+    fetch(
+      'http://192.168.1.10/api/inventories/' + inventoryId + "/contents/",
+      {
+        method: "GET",
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + context.bearerToken
+        }
+      }
+    ).then(async (response) => {
+      if (response.status === 200) {
+        const data = await response.json();
+        setItems(data);
+      }
+    });
+  }
+
+  const deleteItem = async (item) => {
+    fetch(
+      'http://192.168.1.10/api/inventoryitems/' + item.id,
+      {
+        method: "DELETE",
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + context.bearerToken
+        }
+      }
+    ).then(async (response) => {
+      if (response.status === 204) {
+        let newItems = items;
+        var removeIndex = newItems.map(item => item.id).indexOf(item.id);
+        newItems.splice(removeIndex, 1);
+        setItems([...newItems]);
+      }
+    });
+  }
+
+  const createItem = async () => {
+    fetch(
+      'http://192.168.1.10/api/inventoryitems',
+      {
+        method: "POST",
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + context.bearerToken
+        },
+        body: JSON.stringify({
+          name: itemName,
+          description: itemDescription,
+          inventoryId: inventoryId
+        })
+      }
+    ).then(async (response) => {
+      if (response.status === 201) {
+        setItems([...items, await response.json()]);
+      }
+    });
+  }
+
+  const inventoryItems = items.map((item, _) => {
+    return (
+      <Col key={item.id}>
+      <Card>
+        <Card.Body>
+          <Card.Title>{item.name}</Card.Title>
+          <Card.Text>
+            {item.description}
+          </Card.Text>
+          <Button
+            variant="primary"
+            onClick={() => deleteItem(item)}
+          >Delete</Button>
+        </Card.Body>
+      </Card>
+      </Col>
+    )
+  });
+  
+  return (
+    <>
+    <Container fluid>
+      <Row xs={1} md={2} className="g-4">
+        {inventoryItems}
+      </Row>
+      <Stack gap={3} className="col-xxl-2 offset-xxl-5 col-md-4 offset-md-4">
+        <div className="text-center">
+          <h3>Create Item</h3>
+        </div>
+        <div>
+          <Form.Label>Name</Form.Label>
+          <Form.Control
+            type="text"
+            name="itemName"
+            onChange={(e) => {
+              setItemName(e.target.value);
+            }}
+          />
+        </div>
+        <div>
+          <Form.Label>Description</Form.Label>
+          <Form.Control
+            type="text"
+            name="itemDescription"
+            onChange={(e) => {
+              setItemDescription(e.target.value);
+            }}
+          />
+        </div>
+        <div className="d-grid gap-2">
+          <Button
+            onClick={() => {
+              createItem();
+            }}
+          >Create</Button>
+        </div>
+      </Stack>
+    </Container>
+    </>
+  )
+}
+
 function Inventories() {
   const [inventories, setInventories] = useState([]);
   const [inventoryName, setInventoryName] = useState("");
@@ -59,7 +200,7 @@ function Inventories() {
     getInventories();
   }, []);
 
-  const getInventories = () => {
+  const getInventories = async () => {
     fetch(
       'http://192.168.1.10/api/inventories',
       {
@@ -76,7 +217,7 @@ function Inventories() {
         setInventories(data);
       }
     });
-  };
+  }
 
   const inventoryList = inventories.map((inventory, _) => {
     return (
@@ -87,14 +228,20 @@ function Inventories() {
           <Card.Text>
             {inventory.description}
           </Card.Text>
+          <a href={"/inventory/" + inventory.id}>
           <Button variant="primary">View</Button>
+          </a>
+          <Button
+            variant="warning"
+            onClick={() => deleteInventory(inventory)}
+          >Delete</Button>
         </Card.Body>
       </Card>
       </Col>
     )
   });
 
-  const createInventory = () => {
+  const createInventory = async () => {
     fetch(
       'http://192.168.1.10/api/inventories',
       {
@@ -116,13 +263,33 @@ function Inventories() {
     });
   };
 
+  const deleteInventory = async (inventory) => {
+    fetch(
+      'http://192.168.1.10/api/inventories/' + inventory.id,
+      {
+        method: "DELETE",
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + context.bearerToken
+        }
+      }
+    ).then(async (response) => {
+      if (response.status === 204) {
+        let newInventories = inventories;
+        var removeIndex = newInventories.map(inventory => inventory.id).indexOf(inventory.id);
+        newInventories.splice(removeIndex, 1);
+        setInventories([...newInventories]);
+      }
+    });
+  }
+
 
   return (
     <>
-      <button onClick={getInventories}>get inventories</button>
       <Container fluid>
-        <Row>
-            {inventoryList}
+        <Row xs={1} md={2} className="g-4">
+          {inventoryList}
         </Row>
         <Stack gap={3} className="col-xxl-2 offset-xxl-5 col-md-4 offset-md-4">
           <div className="text-center">
@@ -171,16 +338,6 @@ export function Settings() {
             <h3>Settings</h3>
           </Col>
         </Row>
-        <Row>
-          <Col>
-            <h3>Inventories</h3>
-          </Col>
-        </Row>
-        <Row>
-          <Col>
-            <Inventories />
-          </Col>
-        </Row>
       </Container>
     </>
   )
@@ -200,6 +357,12 @@ export function App() {
           </Route>
           <Route exact path="/settings" element={<PrivateRoute />} >
             <Route exact path="/settings" element={<Settings />} />
+          </Route>
+          <Route exact path="/inventories" element={<PrivateRoute />} >
+            <Route exact path="/inventories" element={<Inventories />} />
+          </Route>
+          <Route exact path="/inventory/:id" element={<PrivateRoute />} >
+            <Route exact path="/inventory/:id" element={<Inventory />} />
           </Route>
           <Route exact path="/game" element={<PrivateRoute />} >
             <Route exact path="/game" element={<Game />} />

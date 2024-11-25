@@ -249,7 +249,7 @@ export function Logout() {
   
   useEffect(() => {
     context.setBearerToken("");
-    context.setAuthenticated("");  
+    context.setAuthenticated("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
