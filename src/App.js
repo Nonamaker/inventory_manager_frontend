@@ -1,292 +1,314 @@
-import { useState } from 'react';
+import { useState, useContext, useEffect } from 'react';
 
 import Container from 'react-bootstrap/Container';
+import Nav from 'react-bootstrap/Nav';
+import Navbar from 'react-bootstrap/Navbar';
+import NavDropdown from 'react-bootstrap/NavDropdown';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Form from 'react-bootstrap/Form';
-import { InputGroup, ListGroup } from 'react-bootstrap';
+import Button from 'react-bootstrap/Button';
+import Alert from 'react-bootstrap/Alert';
+import Stack from 'react-bootstrap/Stack';
+import InputGroup from 'react-bootstrap/InputGroup';
 
-function Square({ value, onSquareClick }) {
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faEye } from '@fortawesome/free-solid-svg-icons';
+
+
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router";
+
+
+import { authContext } from './contexts';
+import { PrivateRoute } from './PrivateRoute.js';
+
+export function AppNavbar() {
   return (
-    <button
-      className="square"
-      onClick={onSquareClick}
-    >
-      {value}
-    </button>
-  );
+    <Navbar expand="lg" className="bg-body-tertiary mb-5">
+      <Container>
+        <Navbar.Brand href="/">Inventory Manager</Navbar.Brand>
+        <Navbar.Toggle aria-controls="basic-navbar-nav" />
+        <Navbar.Collapse id="basic-navbar-nav">
+          <Nav className="me-auto">
+            <Nav.Link href="/characters">Characters</Nav.Link>
+            <NavDropdown title="Profile" id="basic-nav-dropdown">
+              <NavDropdown.Item href="/settings">Settings</NavDropdown.Item>
+              <NavDropdown.Divider />
+              <NavDropdown.Item href="/logout">
+                 Logout
+              </NavDropdown.Item>
+            </NavDropdown>
+          </Nav>
+        </Navbar.Collapse>
+      </Container>
+    </Navbar>
+  )
 }
 
-function Board({ xDimension, yDimension, xIsNext, squares, onPlay }) {
 
-  const winner = calculateWinner(squares, xDimension, yDimension);
-  let status;
+export function Register() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordCheck, setPasswordCheck] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordCheck, setShowPasswordCheck] = useState(false);
+  const [errors, setErrors] = useState([]);
 
-  if (winner) {
-    status = "Winner: " + winner;
-  } else {
-    status = "Next player: " + (xIsNext ? "X": "O");
-  }
+  const navigate = useNavigate();
 
-  function handleClick(i) {
+  const attemptRegister = () => {
 
-    if (squares[i] || winner) {
+    if (passwordCheck !== password) {
+      setErrors(["Passwords do not match."]);
       return;
     }
 
-    const nextSquares = squares.slice();
-
-    let symbol = "O"
-    if (xIsNext) {
-      symbol = "X"
-    }
-
-    nextSquares[i] = symbol;
-    onPlay(nextSquares);
+    fetch(
+      'http://192.168.1.10/register',
+      {
+        method: "POST",
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password
+        })
+      }
+    )
+    .then(async (response) => {
+      if (response.status === 200) {
+          navigate("/login");
+      } else if (response.status === 400) {
+        const data = await response.json();
+        let errorMessages = [];
+        for (var prop in data.errors) {
+          errorMessages.push(...data.errors[prop]);
+        }
+        setErrors(errorMessages);
+      }
+    });
   }
 
-  const boardRows = [...Array(yDimension)].map((_, j) => {
-    const boardSquares = [...Array(xDimension)].map((_, i) => {
-      const index = xDimension * j + i;
-      return (
-        <Square
-          key={index}
-          value={squares[index]}
-          onSquareClick={() => handleClick(index)}
-        />
-      )
-    });
-
+  const errorList = errors.map((error, index) => {
     return (
-      <div key={j} className="board-row" >
-        {boardSquares}
-      </div>
-    );
+      <Alert
+        key={index}
+        variant="warning"
+      >
+        {error}
+      </Alert>
+    )
+  });
 
-  })
+  const ErrorSection = () => {
+    if (errors.length > 0) { 
+      return (        
+        <div md={{ span: 4, offset: 4}}>
+          {errorList}
+        </div>
+      ) 
+    }
+    return null;
+  }
 
   return (
     <>
-      <Row>
-        <Col>
-          <h3>{status}</h3>
-        </Col>
-      </Row>
-      <Row>
-        <Col >
-          {boardRows}
-        </Col>
-      </Row>
+      <Container fluid>
+        <Stack gap={3} className="col-xxl-2 offset-xxl-5 col-md-4 offset-md-4">
+          <div className="text-center">
+            <h3>Register</h3>
+          </div>
+          <div>
+            <Form.Label>Email Address</Form.Label>
+            <Form.Control
+              type="email"
+              name="email"
+              onChange={(e) => {
+                setEmail(e.target.value);
+              }}
+            />
+          </div>
+          <div>
+            <Form.Label htmlFor='password'>Password</Form.Label>
+            <InputGroup>
+              <Form.Control
+                type={showPassword ? "text" : "password"}
+                name="password"
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                }}
+              />
+              <InputGroup.Text
+                onClick={() => {
+                  setShowPassword(!showPassword);
+                }}
+              >
+                <FontAwesomeIcon icon={faEye} />
+              </InputGroup.Text>
+            </InputGroup>
+          </div>
+          <div>
+            <Form.Label htmlFor='password'>Password</Form.Label>
+            <InputGroup>
+              <Form.Control
+                type={showPasswordCheck ? "text" : "password"}
+                name="passwordCheck"
+                onChange={(e) => {
+                  setPasswordCheck(e.target.value);
+                }}
+              />
+              <InputGroup.Text
+                onClick={() => {
+                  setShowPasswordCheck(!showPasswordCheck);
+                }}
+              >
+                <FontAwesomeIcon icon={faEye} />
+              </InputGroup.Text>
+            </InputGroup>
+          </div>
+          <div className="d-grid gap-2">
+            <Button
+              onClick={() => {
+                attemptRegister();
+              }}
+            >Register</Button>
+            <Form.Text className="text-muted">
+              Already have an account? <a href="/login">Login</a>
+            </Form.Text>
+          </div>
+          <ErrorSection />  
+        </Stack>
+      </Container>
     </>
-  );
+  )
 }
 
-export default function Game() {
-  const [xDimension, setXDimension] = useState(3);
-  const [yDimension, setYDimension] = useState(3);
-  const [history, setHistory] = useState([Array(xDimension * yDimension).fill(null)]);
-  const [currentMove, setCurrentMove] = useState(0);
-  const xIsNext = currentMove % 2 === 0;
-  const currentSquares = history[currentMove];
+export function Login() {
 
-  function handlePlay(nextSquares) {
-    const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
-    setHistory(nextHistory);
-    setCurrentMove(nextHistory.length - 1);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  const context = useContext(authContext);
+  const navigate = useNavigate();
+
+  const attemptLogin = () => {
+    fetch(
+      'http://192.168.1.10/login',
+      {
+        method: "POST",
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password
+        })
+      }
+    )
+    .then(async (response) => {
+      if (response.status === 200) {
+          const data = await response.json();
+          context.setBearerToken(data.accessToken);
+          context.setAuthenticated(true);
+          navigate("/");
+      }
+    });
   }
-
-  function jumpTo(move) {
-    setCurrentMove(move);
-  }
-
-  function reset() {
-    setHistory([Array(xDimension * yDimension).fill(null)]);
-    setCurrentMove(0);
-  }
-
-  const moves = history.map((_, move) => {
-    let description;
-    if (move === currentMove) {
-      description = 'You are at move #' + move;
-    } else if (move > 0) {
-      description = 'Go to move #' + move;
-    } else {
-      description = 'Go to game start';
-    }
-    return (
-      <ListGroup>
-        <ListGroup.Item
-          key={move}
-          variant="secondary"
-          action
-          onClick={() => jumpTo(move)}
-          active={move === currentMove ? "active" : "" }
-        >
-        {description}
-        </ListGroup.Item>
-      </ListGroup>
-    );
-  });
 
   return (
-    <Container fluid>
-      <Row>
-        <Col md={{ span: 3, offset: 3}}>
-          <InputGroup>
-            <InputGroup.Text>X</InputGroup.Text>
+    <>
+      <Container fluid>
+        <Stack gap={3} className="col-xxl-2 offset-xxl-5 col-md-4 offset-md-4">
+          <div className="text-center">
+            <h3>Login</h3>
+          </div>
+          <div>
+            <Form.Label>Email Address</Form.Label>
             <Form.Control
-              type="number"
-              name="xDimension"
-              value={xDimension}
-              disabled = {currentMove > 0 ? "disabled" : "" }
+              type="email"
+              name="email"
               onChange={(e) => {
-                let value = Number(e.target.value);
-                if (value < 1) {
-                  value = 1;
-                } else if (value > 50) {
-                  value = 50;
-                }
-                setXDimension(value);
-                reset();
+                setEmail(e.target.value);
               }}
             />
-          </InputGroup>
-        </Col>
-        <Col md={{ span: 3}}>
-          <InputGroup>
-            <InputGroup.Text>Y</InputGroup.Text>
-            <Form.Control
-              type="number"
-              name="yDimension"
-              value={yDimension}
-              disabled = {currentMove > 0 ? "disabled" : "" }
-              onChange={(e) => {
-                let value = Number(e.target.value);
-                if (value < 1) {
-                  value = 1;
-                } else if (value > 50) {
-                  value = 50;
-                }
-                setYDimension(value);
-                reset();
+          </div>
+          <div>
+            <Form.Label htmlFor='password'>Password</Form.Label>
+            <InputGroup>
+              <Form.Control
+                type={showPassword ? "text" : "password"}
+                name="password"
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                }}
+              />
+              <InputGroup.Text
+                onClick={() => {
+                  setShowPassword(!showPassword);
+                }}
+              >
+                <FontAwesomeIcon icon={faEye} />
+              </InputGroup.Text>
+            </InputGroup>
+          </div>
+          <div className="d-grid gap-2">
+            <Button
+              onClick={() => {
+                attemptLogin();
               }}
-            />
-          </InputGroup>
-        </Col>
-      </Row>
-      <Row>
-        <Col className="text-center">
-          <Board
-            xDimension={xDimension}
-            yDimension={yDimension}
-            xIsNext={xIsNext}
-            squares={currentSquares}
-            onPlay={handlePlay}
-          />
-        </Col>
-      </Row>
-      <Row>
-        <Col md="3">
-          <ListGroup>
-            <ListGroup.Item
-              key={0}
-              variant="secondary"
-              action
-              onClick={() => reset()}
-            >
-            Reset Game
-            </ListGroup.Item>
-          </ListGroup>
-          {moves}
-        </Col>
-      </Row>
-    </Container>
-    
-  );
+            >Login</Button>
+            <Form.Text className="text-muted">
+              Don't have an account? <a href="/register">Register</a>
+            </Form.Text>
+          </div>
+        </Stack>
+      </Container>
+    </>
+  )
 }
 
-function calculateWinner(squares, xDimension, yDimension) {
+function Logout() {
 
+  const context = useContext(authContext);
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    context.setBearerToken("");
+    context.setAuthenticated("");  
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  function gridCoordinatesToSquareIndex(i, j) {
-    return i + j * xDimension
-  }
+  navigate("/login");
+}
 
-  function indexInBounds(index) {
-    if (index < 0 || index > xDimension * yDimension) {
-      return false;
-    }
-    return true;
-  }
+export function Home() {
+  
+  return (
+    <>
+      <h3>Home</h3>
+    </>
+  )
+}
 
-  function solutionValid(solution) {
-    for (let index = 0; index < solution.length; index++) {
-      if (!indexInBounds(solution[index])) {
-        return false;
-      }
-    }
-    return true;
-  }
+export function App() {
 
-  let possibleSolutions = [];
+  const context = useContext(authContext);
 
-  for (let x = 0; x < xDimension; x++) {
-    for (let y = 0; y < yDimension; y++) {
-
-      if (x === 0) {
-        possibleSolutions.push( 
-          [...Array(xDimension)].map((_, i) => {
-            return gridCoordinatesToSquareIndex(x+i, y  , xDimension) // -
-          })
-        )
-        possibleSolutions.push( 
-          [...Array(xDimension)].map((_, i) => {
-            return gridCoordinatesToSquareIndex(x+i, y+i, xDimension) // \
-          })
-        )
-        possibleSolutions.push( 
-          [...Array(xDimension)].map((_, i) => {
-            return gridCoordinatesToSquareIndex(x+i, y-i, xDimension) // /
-          })
-        )
-      }
-      if (y === 0) {
-        possibleSolutions.push([...Array(yDimension)].map((_, j) => {
-          return gridCoordinatesToSquareIndex(x, y+j, xDimension) // |
-        }))
-      }
-
-    }
-  }
-
-  let possibleSolutionsSet = new Set(possibleSolutions.map(JSON.stringify));
-  let uniquePossibleSolutions = Array.from(possibleSolutionsSet).map(JSON.parse);
-
-  let solutions = [];
-  uniquePossibleSolutions.forEach((solution) => {
-    if (solutionValid(solution)) {
-      solutions.push(solution);
-    }
-  });
-
-  for (let i = 0; i < solutions.length; i++) {
-    let solution = solutions[i];
-    let values = [];
-
-    solution.forEach((index) => {
-      values.push(squares[index]);
-    });
-
-    if (values.includes(null)) {
-      continue;
-    }
-
-    const allEqual = values.every((value, _, arr) => value === arr[0]);
-
-    if (allEqual) {
-      return values[0];
-    }
-
-  }
-  return null;
+  return (
+      context.contextLoaded ? (
+      <BrowserRouter>
+        <Routes>
+          <Route exact path="/" element={<PrivateRoute />} >
+            <Route exact path="/" element={<Home />} />
+          </Route>
+          <Route path="/login" element={<Login />} />
+          <Route path="/logout" element={<Logout />} />
+          <Route path="/register" element={<Register />} />
+        </Routes>
+      </BrowserRouter> ) : null
+  )
 }
