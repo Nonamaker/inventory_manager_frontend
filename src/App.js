@@ -1,26 +1,22 @@
-import { useState, useContext, useEffect } from 'react';
+import { useContext, useEffect, useState } from 'react';
 
 import Container from 'react-bootstrap/Container';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import NavDropdown from 'react-bootstrap/NavDropdown';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button';
-import Alert from 'react-bootstrap/Alert';
-import Stack from 'react-bootstrap/Stack';
-import InputGroup from 'react-bootstrap/InputGroup';
+import {Card, Row, Col, Stack, Form, Button} from 'react-bootstrap';
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faEye } from '@fortawesome/free-solid-svg-icons';
-
-
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router";
-
+import { BrowserRouter, Routes, Route } from "react-router";
 
 import { authContext } from './contexts';
 import { PrivateRoute } from './PrivateRoute.js';
+import { Game } from './Game.js';
+import { CreateInventory, CreateItem, DeleteInventory, DeleteItem, GetInventories, GetInventory, GetInventoryContents, MoveItem } from './InventoryAPI.js';
+
+import { useParams } from "react-router";
+
+import {Login, Logout, Register} from './Authentication.js';
+
 
 export function AppNavbar() {
   return (
@@ -30,7 +26,7 @@ export function AppNavbar() {
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto">
-            <Nav.Link href="/characters">Characters</Nav.Link>
+            <Nav.Link href="/inventories">Inventories</Nav.Link>
             <NavDropdown title="Profile" id="basic-nav-dropdown">
               <NavDropdown.Item href="/settings">Settings</NavDropdown.Item>
               <NavDropdown.Divider />
@@ -45,246 +41,6 @@ export function AppNavbar() {
   )
 }
 
-
-export function Register() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordCheck, setPasswordCheck] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordCheck, setShowPasswordCheck] = useState(false);
-  const [errors, setErrors] = useState([]);
-
-  const navigate = useNavigate();
-
-  const attemptRegister = () => {
-
-    if (passwordCheck !== password) {
-      setErrors(["Passwords do not match."]);
-      return;
-    }
-
-    fetch(
-      'http://192.168.1.10/register',
-      {
-        method: "POST",
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: email,
-          password: password
-        })
-      }
-    )
-    .then(async (response) => {
-      if (response.status === 200) {
-          navigate("/login");
-      } else if (response.status === 400) {
-        const data = await response.json();
-        let errorMessages = [];
-        for (var prop in data.errors) {
-          errorMessages.push(...data.errors[prop]);
-        }
-        setErrors(errorMessages);
-      }
-    });
-  }
-
-  const errorList = errors.map((error, index) => {
-    return (
-      <Alert
-        key={index}
-        variant="warning"
-      >
-        {error}
-      </Alert>
-    )
-  });
-
-  const ErrorSection = () => {
-    if (errors.length > 0) { 
-      return (        
-        <div md={{ span: 4, offset: 4}}>
-          {errorList}
-        </div>
-      ) 
-    }
-    return null;
-  }
-
-  return (
-    <>
-      <Container fluid>
-        <Stack gap={3} className="col-xxl-2 offset-xxl-5 col-md-4 offset-md-4">
-          <div className="text-center">
-            <h3>Register</h3>
-          </div>
-          <div>
-            <Form.Label>Email Address</Form.Label>
-            <Form.Control
-              type="email"
-              name="email"
-              onChange={(e) => {
-                setEmail(e.target.value);
-              }}
-            />
-          </div>
-          <div>
-            <Form.Label htmlFor='password'>Password</Form.Label>
-            <InputGroup>
-              <Form.Control
-                type={showPassword ? "text" : "password"}
-                name="password"
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                }}
-              />
-              <InputGroup.Text
-                onClick={() => {
-                  setShowPassword(!showPassword);
-                }}
-              >
-                <FontAwesomeIcon icon={faEye} />
-              </InputGroup.Text>
-            </InputGroup>
-          </div>
-          <div>
-            <Form.Label htmlFor='password'>Password</Form.Label>
-            <InputGroup>
-              <Form.Control
-                type={showPasswordCheck ? "text" : "password"}
-                name="passwordCheck"
-                onChange={(e) => {
-                  setPasswordCheck(e.target.value);
-                }}
-              />
-              <InputGroup.Text
-                onClick={() => {
-                  setShowPasswordCheck(!showPasswordCheck);
-                }}
-              >
-                <FontAwesomeIcon icon={faEye} />
-              </InputGroup.Text>
-            </InputGroup>
-          </div>
-          <div className="d-grid gap-2">
-            <Button
-              onClick={() => {
-                attemptRegister();
-              }}
-            >Register</Button>
-            <Form.Text className="text-muted">
-              Already have an account? <a href="/login">Login</a>
-            </Form.Text>
-          </div>
-          <ErrorSection />  
-        </Stack>
-      </Container>
-    </>
-  )
-}
-
-export function Login() {
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-
-  const context = useContext(authContext);
-  const navigate = useNavigate();
-
-  const attemptLogin = () => {
-    fetch(
-      'http://192.168.1.10/login',
-      {
-        method: "POST",
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: email,
-          password: password
-        })
-      }
-    )
-    .then(async (response) => {
-      if (response.status === 200) {
-          const data = await response.json();
-          context.setBearerToken(data.accessToken);
-          context.setAuthenticated(true);
-          navigate("/");
-      }
-    });
-  }
-
-  return (
-    <>
-      <Container fluid>
-        <Stack gap={3} className="col-xxl-2 offset-xxl-5 col-md-4 offset-md-4">
-          <div className="text-center">
-            <h3>Login</h3>
-          </div>
-          <div>
-            <Form.Label>Email Address</Form.Label>
-            <Form.Control
-              type="email"
-              name="email"
-              onChange={(e) => {
-                setEmail(e.target.value);
-              }}
-            />
-          </div>
-          <div>
-            <Form.Label htmlFor='password'>Password</Form.Label>
-            <InputGroup>
-              <Form.Control
-                type={showPassword ? "text" : "password"}
-                name="password"
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                }}
-              />
-              <InputGroup.Text
-                onClick={() => {
-                  setShowPassword(!showPassword);
-                }}
-              >
-                <FontAwesomeIcon icon={faEye} />
-              </InputGroup.Text>
-            </InputGroup>
-          </div>
-          <div className="d-grid gap-2">
-            <Button
-              onClick={() => {
-                attemptLogin();
-              }}
-            >Login</Button>
-            <Form.Text className="text-muted">
-              Don't have an account? <a href="/register">Register</a>
-            </Form.Text>
-          </div>
-        </Stack>
-      </Container>
-    </>
-  )
-}
-
-function Logout() {
-
-  const context = useContext(authContext);
-  const navigate = useNavigate();
-  
-  useEffect(() => {
-    context.setBearerToken("");
-    context.setAuthenticated("");  
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  navigate("/login");
-}
-
 export function Home() {
   
   return (
@@ -293,6 +49,246 @@ export function Home() {
     </>
   )
 }
+
+function Inventory() {
+  let params = useParams();
+  const inventoryId = params.id;
+  
+  const [items, setItems] = useState([]);
+  const [itemName, setItemName] = useState("");
+  const [itemDescription, setItemDescription] = useState("");
+  const [inventory, setInventory] = useState({});
+
+  const context = useContext(authContext);
+  const inventories = context.inventories;
+  const setInventories = context.setInventories;
+
+  const getInventories = () => {
+    GetInventories(context.bearerToken, setInventories);
+  }
+
+  const getInventory = () => {
+    GetInventory(context.bearerToken, inventoryId, setInventory);
+  }
+
+  const getInventoryContents = async () => {
+    GetInventoryContents(context.bearerToken, inventoryId, setItems);
+  }
+
+  const deleteItem = async (item) => {
+    DeleteItem(context.bearerToken, item.id, items, setItems);
+  }
+
+  const createItem = async () => {
+    let item = {
+      'name': itemName,
+      'description': itemDescription,
+      'inventoryId': inventoryId
+    }
+    CreateItem(context.bearerToken, item, items, setItems);
+  }
+
+  const moveItem = async (item, newInventoryId) => {
+    MoveItem(context.bearerToken, item, newInventoryId, items, setItems);
+  }
+
+  useEffect(() => {
+    getInventoryContents();
+    getInventories();
+    getInventory();
+  }, []);
+
+  const inventoryOptions = inventories.map((inventory, _) => {
+    return (
+      <option key={inventory.id} value={inventory.id}>{inventory.name}</option>
+    )
+  });
+
+  const inventoryItems = items.map((item, _) => {
+    return (
+      <Col key={item.id}>
+        <Card>
+          <Card.Body>
+            <Card.Title>{item.name}</Card.Title>
+            <Card.Text>
+              {item.description}
+            </Card.Text>
+            <Button
+              variant="primary"
+              onClick={() => deleteItem(item)}
+            >Delete</Button>
+            
+            <Form.Select
+              aria-label="Default select example"
+              id={"move_item_" + item.id}
+            >
+              <option value="" hidden>Move to other inventory</option>
+              {inventoryOptions}
+            </Form.Select>
+            <Button
+              variant="primary"
+              onClick={() => moveItem(item, document.getElementById("move_item_" + item.id).value)}
+            >Move</Button>
+          </Card.Body>
+        </Card>
+      </Col>
+    )
+  });
+  
+  return (
+    <>
+    <Container fluid>
+      <Row>
+        <Col className="text-center" >
+          <h3>{inventory.name}</h3>
+        </Col>
+      </Row>
+      <Row>
+        {inventoryItems}
+      </Row>
+      <Stack gap={3} className="col-xxl-2 offset-xxl-5 col-md-4 offset-md-4">
+        <div className="text-center">
+          <h3>Create Item</h3>
+        </div>
+        <div>
+          <Form.Label>Name</Form.Label>
+          <Form.Control
+            type="text"
+            name="itemName"
+            onChange={(e) => {
+              setItemName(e.target.value);
+            }}
+          />
+        </div>
+        <div>
+          <Form.Label>Description</Form.Label>
+          <Form.Control
+            type="text"
+            name="itemDescription"
+            onChange={(e) => {
+              setItemDescription(e.target.value);
+            }}
+          />
+        </div>
+        <div className="d-grid gap-2">
+          <Button
+            onClick={() => {
+              createItem();
+            }}
+          >Create</Button>
+        </div>
+      </Stack>
+    </Container>
+    </>
+  )
+}
+
+
+function Inventories() {
+  const [inventoryName, setInventoryName] = useState("");
+  const [inventoryDescription, setInventoryDescription] = useState("");
+
+  const context = useContext(authContext);
+
+  const inventories = context.inventories;
+  const setInventories = context.setInventories;
+
+  const createInventory = async () => {
+    let inventory = {
+      'name': inventoryName,
+      'description': inventoryDescription
+    };
+    CreateInventory(context.bearerToken, inventory, inventories, setInventories);
+  };
+
+  const deleteInventory = async (inventory) => {
+    DeleteInventory(context.bearerToken, inventory.id, inventories, setInventories);
+  }
+
+  useEffect(() => {
+
+  }, []);
+
+  const inventoryList = inventories.map((inventory, inventoryIndex) => {
+    return (
+      <Col key={inventoryIndex}>
+      <Card>
+        <Card.Body>
+          <Card.Title>{inventory.name}</Card.Title>
+          <Card.Text>
+            {inventory.description}
+          </Card.Text>
+          <a href={"/inventory/" + inventory.id}>
+          <Button variant="primary">View</Button>
+          </a>
+          <Button
+            variant="warning"
+            onClick={() => deleteInventory(inventory)}
+          >Delete</Button>
+        </Card.Body>
+      </Card>
+      </Col>
+    )
+  });
+
+  return (
+    <>
+      <Container fluid>
+        <Row xs={1} md={2} className="g-4">
+          {inventoryList}
+        </Row>
+        <Stack gap={3} className="col-xxl-2 offset-xxl-5 col-md-4 offset-md-4">
+          <div className="text-center">
+            <h3>Create Inventory</h3>
+          </div>
+          <div>
+            <Form.Label>Name</Form.Label>
+            <Form.Control
+              type="text"
+              name="inventoryName"
+              onChange={(e) => {
+                setInventoryName(e.target.value);
+              }}
+            />
+          </div>
+          <div>
+            <Form.Label>Description</Form.Label>
+            <Form.Control
+              type="text"
+              name="inventoryDescription"
+              onChange={(e) => {
+                setInventoryDescription(e.target.value);
+              }}
+            />
+          </div>
+          <div className="d-grid gap-2">
+            <Button
+              onClick={() => {
+                createInventory();
+              }}
+            >Create</Button>
+          </div>
+        </Stack>
+      </Container>
+    </>
+  )
+}
+
+export function Settings() {
+  
+  return (
+    <>
+      <Container fluid>
+        <Row>
+          <Col>
+            <h3>Settings</h3>
+          </Col>
+        </Row>
+      </Container>
+    </>
+  )
+}
+
 
 export function App() {
 
@@ -304,6 +300,18 @@ export function App() {
         <Routes>
           <Route exact path="/" element={<PrivateRoute />} >
             <Route exact path="/" element={<Home />} />
+          </Route>
+          <Route exact path="/settings" element={<PrivateRoute />} >
+            <Route exact path="/settings" element={<Settings />} />
+          </Route>
+          <Route exact path="/inventories" element={<PrivateRoute />} >
+            <Route exact path="/inventories" element={<Inventories />} />
+          </Route>
+          <Route exact path="/inventory/:id" element={<PrivateRoute />} >
+            <Route exact path="/inventory/:id" element={<Inventory />} />
+          </Route>
+          <Route exact path="/game" element={<PrivateRoute />} >
+            <Route exact path="/game" element={<Game />} />
           </Route>
           <Route path="/login" element={<Login />} />
           <Route path="/logout" element={<Logout />} />
