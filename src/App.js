@@ -11,6 +11,7 @@ import { BrowserRouter, Routes, Route } from "react-router";
 import { authContext } from './contexts';
 import { PrivateRoute } from './PrivateRoute.js';
 import { Game } from './Game.js';
+import { CreateInventory, CreateItem, DeleteInventory, DeleteItem, GetInventories, GetInventory, GetInventoryContents, MoveItem } from './InventoryAPI.js';
 
 import { useParams } from "react-router";
 
@@ -40,7 +41,6 @@ export function AppNavbar() {
   )
 }
 
-
 export function Home() {
   
   return (
@@ -54,94 +54,82 @@ function Inventory() {
   let params = useParams();
   const inventoryId = params.id;
   
+  const [inventories, setInventories] = useState([]);
   const [items, setItems] = useState([]);
   const [itemName, setItemName] = useState("");
   const [itemDescription, setItemDescription] = useState("");
+  const [inventory, setInventory] = useState({});
 
   const context = useContext(authContext);
 
-  useEffect(() => {
-    getInventoryContents();
-  }, []);
+  const getInventories = () => {
+    GetInventories(context.bearerToken, setInventories);
+  }
+
+  const getInventory = () => {
+    GetInventory(context.bearerToken, inventoryId, setInventory);
+  }
 
   const getInventoryContents = async () => {
-    fetch(
-      'http://192.168.1.10/api/inventories/' + inventoryId + "/contents/",
-      {
-        method: "GET",
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + context.bearerToken
-        }
-      }
-    ).then(async (response) => {
-      if (response.status === 200) {
-        const data = await response.json();
-        setItems(data);
-      }
-    });
+    GetInventoryContents(context.bearerToken, inventoryId, setItems);
   }
 
   const deleteItem = async (item) => {
-    fetch(
-      'http://192.168.1.10/api/inventoryitems/' + item.id,
-      {
-        method: "DELETE",
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + context.bearerToken
-        }
-      }
-    ).then(async (response) => {
-      if (response.status === 204) {
-        let newItems = items;
-        var removeIndex = newItems.map(item => item.id).indexOf(item.id);
-        newItems.splice(removeIndex, 1);
-        setItems([...newItems]);
-      }
-    });
+    DeleteItem(context.bearerToken, item.id, items, setItems);
   }
 
   const createItem = async () => {
-    fetch(
-      'http://192.168.1.10/api/inventoryitems',
-      {
-        method: "POST",
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + context.bearerToken
-        },
-        body: JSON.stringify({
-          name: itemName,
-          description: itemDescription,
-          inventoryId: inventoryId
-        })
-      }
-    ).then(async (response) => {
-      if (response.status === 201) {
-        setItems([...items, await response.json()]);
-      }
-    });
+    let item = {
+      'name': itemName,
+      'description': itemDescription,
+      'inventoryId': inventoryId
+    }
+    CreateItem(context.bearerToken, item, items, setItems);
   }
+
+  const moveItem = async (item, newInventoryId) => {
+    MoveItem(context.bearerToken, item, newInventoryId, items, setItems);
+  }
+
+  useEffect(() => {
+    getInventoryContents();
+    getInventories();
+    getInventory();
+  }, []);
+
+  const inventoryOptions = inventories.map((inventory, _) => {
+    return (
+      <option key={inventory.id} value={inventory.id}>{inventory.name}</option>
+    )
+  });
 
   const inventoryItems = items.map((item, _) => {
     return (
       <Col key={item.id}>
-      <Card>
-        <Card.Body>
-          <Card.Title>{item.name}</Card.Title>
-          <Card.Text>
-            {item.description}
-          </Card.Text>
-          <Button
-            variant="primary"
-            onClick={() => deleteItem(item)}
-          >Delete</Button>
-        </Card.Body>
-      </Card>
+        <Card>
+          <Card.Body>
+            <Card.Title>{item.name}</Card.Title>
+            <Card.Text>
+              {item.description}
+            </Card.Text>
+            <Button
+              variant="primary"
+              onClick={() => deleteItem(item)}
+            >Delete</Button>
+            
+            <Form.Select
+              aria-label="Default select example"
+              id={"move_item_" + item.id}
+            >
+              <option value="" hidden>Move to other inventory</option>
+              {inventoryOptions}
+            </Form.Select>
+            <Button
+              variant="primary"
+              onClick={() => moveItem(item, document.getElementById("move_item_" + item.id).value)}
+            >Move</Button>
+          </Card.Body>
+        </Card>
       </Col>
     )
   });
@@ -149,7 +137,12 @@ function Inventory() {
   return (
     <>
     <Container fluid>
-      <Row xs={1} md={2} className="g-4">
+      <Row>
+        <Col className="text-center" >
+          <h3>{inventory.name}</h3>
+        </Col>
+      </Row>
+      <Row>
         {inventoryItems}
       </Row>
       <Stack gap={3} className="col-xxl-2 offset-xxl-5 col-md-4 offset-md-4">
@@ -189,6 +182,7 @@ function Inventory() {
   )
 }
 
+
 function Inventories() {
   const [inventories, setInventories] = useState([]);
   const [inventoryName, setInventoryName] = useState("");
@@ -196,28 +190,25 @@ function Inventories() {
 
   const context = useContext(authContext);
 
+  const getInventories = async () => {
+    GetInventories(context.bearerToken, setInventories);
+  }
+
+  const createInventory = async () => {
+    let inventory = {
+      'name': inventoryName,
+      'description': inventoryDescription
+    };
+    CreateInventory(context.bearerToken, inventory, inventories, setInventories);
+  };
+
+  const deleteInventory = async (inventory) => {
+    DeleteInventory(context.bearerToken, inventory.id, inventories, setInventories);
+  }
+
   useEffect(() => {
     getInventories();
   }, []);
-
-  const getInventories = async () => {
-    fetch(
-      'http://192.168.1.10/api/inventories',
-      {
-        method: "GET",
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + context.bearerToken
-        }
-      }
-    ).then(async (response) => {
-      if (response.status === 200) {
-        const data = await response.json();
-        setInventories(data);
-      }
-    });
-  }
 
   const inventoryList = inventories.map((inventory, _) => {
     return (
@@ -240,50 +231,6 @@ function Inventories() {
       </Col>
     )
   });
-
-  const createInventory = async () => {
-    fetch(
-      'http://192.168.1.10/api/inventories',
-      {
-        method: "POST",
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + context.bearerToken
-        },
-        body: JSON.stringify({
-          name: inventoryName,
-          description: inventoryDescription
-        })
-      }
-    ).then(async (response) => {
-      if (response.status === 201) {
-        setInventories([...inventories, await response.json()]);
-      }
-    });
-  };
-
-  const deleteInventory = async (inventory) => {
-    fetch(
-      'http://192.168.1.10/api/inventories/' + inventory.id,
-      {
-        method: "DELETE",
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + context.bearerToken
-        }
-      }
-    ).then(async (response) => {
-      if (response.status === 204) {
-        let newInventories = inventories;
-        var removeIndex = newInventories.map(inventory => inventory.id).indexOf(inventory.id);
-        newInventories.splice(removeIndex, 1);
-        setInventories([...newInventories]);
-      }
-    });
-  }
-
 
   return (
     <>
