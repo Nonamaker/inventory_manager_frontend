@@ -1,3 +1,24 @@
+export async function IsOnline(bearerToken, setOnline) {
+  /* Determines if the app can communicate with the server. */
+  fetch(
+    'http://192.168.1.10/api/inventories',
+    {
+      method: "GET",
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + bearerToken
+      }
+    }
+  ).then(async (response) => {
+    if (response.status === 200) {
+      setOnline(true);
+    }
+  }).catch(() => {
+    setOnline(false);
+  });
+}
+
 export async function CreateInventory(bearerToken, inventory, inventories, setInventories) {
   /* Creates a new inventory */
   fetch(
@@ -55,8 +76,7 @@ export async function GetInventories(bearerToken, setInventories) {
     }
   ).then(async (response) => {
     if (response.status === 200) {
-      const data = await response.json();
-      setInventories(data);
+      setInventories(await response.json());
     }
   });
 }

@@ -54,13 +54,14 @@ function Inventory() {
   let params = useParams();
   const inventoryId = params.id;
   
-  const [inventories, setInventories] = useState([]);
   const [items, setItems] = useState([]);
   const [itemName, setItemName] = useState("");
   const [itemDescription, setItemDescription] = useState("");
   const [inventory, setInventory] = useState({});
 
   const context = useContext(authContext);
+  const inventories = context.inventories;
+  const setInventories = context.setInventories;
 
   const getInventories = () => {
     GetInventories(context.bearerToken, setInventories);
@@ -184,15 +185,13 @@ function Inventory() {
 
 
 function Inventories() {
-  const [inventories, setInventories] = useState([]);
   const [inventoryName, setInventoryName] = useState("");
   const [inventoryDescription, setInventoryDescription] = useState("");
 
   const context = useContext(authContext);
 
-  const getInventories = async () => {
-    GetInventories(context.bearerToken, setInventories);
-  }
+  const inventories = context.inventories;
+  const setInventories = context.setInventories;
 
   const createInventory = async () => {
     let inventory = {
@@ -207,12 +206,12 @@ function Inventories() {
   }
 
   useEffect(() => {
-    getInventories();
+
   }, []);
 
-  const inventoryList = inventories.map((inventory, _) => {
+  const inventoryList = inventories.map((inventory, inventoryIndex) => {
     return (
-      <Col key={inventory.id}>
+      <Col key={inventoryIndex}>
       <Card>
         <Card.Body>
           <Card.Title>{inventory.name}</Card.Title>
