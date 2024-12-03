@@ -1,6 +1,7 @@
 import { useState, createContext, useEffect } from 'react';
 
-import { GetInventories, IsOnline } from './InventoryAPI';
+import { getCookieByName } from './utils';
+import { fetchRetry } from './Authentication';
 
 export const authContext = createContext();
 
@@ -8,64 +9,43 @@ export function AuthContextProvider({ children }) {
   // NOTE: It's not a good idea to store the token in local storage but it will work well
   //  enough for development!
 
+  console.log("Rendering AuthContext.");
+
   const [bearerToken, setBearerToken] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
-  const [contextLoaded, setContextLoaded] = useState(false);
-  const [online, setOnline] = useState(false);
 
-  const [inventories, setInventories] = useState([]);
-
-  // TODO Build in a sync system that verifies the local data against the server data and handles conflicts.
-
-  // Local Storage: load data
   useEffect(() => {
-    const bearerTokenData = JSON.parse(localStorage.getItem('bearerToken'));
-    if (bearerTokenData) {
-      setBearerToken(bearerTokenData);
+    console.log("Mounting AuthContext");
+    // If a bearerToken cookie is present, check to see if it still works. If not,
+    // check if the refreshToken is present and works. If either work, authenticate
+    // user and redirect away from login page.
+    const originalFetch = (onError) => {
+      fetch(
+        process.env.REACT_APP_API + 'inventories',
+        {
+          method: "GET",
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + getCookieByName("bearerToken")
+          },
+        }
+      ).then(async (response) => {
+        if (response.status === 200) {
+          setAuthenticated(true);
+          console.log("Using previous bearer token.");
+        }
+      }).catch(onError);
     }
-    const authenticatedData = JSON.parse(localStorage.getItem('authenticated'));
-    if (authenticatedData) {
-      setAuthenticated(authenticatedData);
+    if (getCookieByName("bearerToken")) {
+      fetchRetry(originalFetch);
     }
-    try {
-      const inventoryData = JSON.parse(localStorage.getItem('inventories'));
-      if (inventoryData) {
-        setInventories(inventoryData);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    setContextLoaded(true);
   }, []);
-
-  // Local Storage: store changes
-  // TODO Don't store undefined values
-  useEffect(() => {
-    localStorage.setItem('bearerToken', JSON.stringify(bearerToken));
-  }, [bearerToken]);
-  useEffect(() => {
-    localStorage.setItem('authenticated', JSON.stringify(authenticated));
-  }, [authenticated]);
-  useEffect(() => {
-    localStorage.setItem('inventories', JSON.stringify(inventories));
-  }, [inventories]);
-
-  // Fetch server data
-  useEffect(() => {
-    if (bearerToken) {
-      IsOnline(bearerToken, setOnline);
-    }
-    if (online) {
-      GetInventories(bearerToken, setInventories);
-    }
-  }, [bearerToken]);
 
   const state = {
     bearerToken, setBearerToken,
-    authenticated, setAuthenticated,
-    inventories, setInventories,
-    contextLoaded
-  };
+    authenticated, setAuthenticated
+  }
 
   return (
     <authContext.Provider value={state}>

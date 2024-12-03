@@ -1,14 +1,15 @@
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import Container from 'react-bootstrap/Container';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import NavDropdown from 'react-bootstrap/NavDropdown';
-import {Card, Row, Col, Stack, Form, Button} from 'react-bootstrap';
+import {Card, Row, Col, Stack, Form, Button, Modal} from 'react-bootstrap';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faTrash } from '@fortawesome/free-solid-svg-icons';
 
-import { BrowserRouter, Routes, Route } from "react-router";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router";
 
-import { authContext } from './contexts';
 import { PrivateRoute } from './PrivateRoute.js';
 import { Game } from './Game.js';
 import { CreateInventory, CreateItem, DeleteInventory, DeleteItem, GetInventories, GetInventory, GetInventoryContents, MoveItem } from './InventoryAPI.js';
@@ -19,18 +20,23 @@ import {Login, Logout, Register} from './Authentication.js';
 
 
 export function AppNavbar() {
+  const navigate = useNavigate();
   return (
     <Navbar expand="lg" className="bg-body-tertiary mb-5">
       <Container>
-        <Navbar.Brand href="/">Inventory Manager</Navbar.Brand>
+        <Navbar.Brand>&nbsp;Inventory Manager</Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto">
-            <Nav.Link href="/inventories">Inventories</Nav.Link>
+            <Nav.Link
+              onClick={() => navigate("/inventories")}
+            >
+              Inventories
+            </Nav.Link>
             <NavDropdown title="Profile" id="basic-nav-dropdown">
-              <NavDropdown.Item href="/settings">Settings</NavDropdown.Item>
-              <NavDropdown.Divider />
-              <NavDropdown.Item href="/logout">
+              <NavDropdown.Item
+                onClick={() => navigate("/logout")}
+              >
                  Logout
               </NavDropdown.Item>
             </NavDropdown>
@@ -41,43 +47,40 @@ export function AppNavbar() {
   )
 }
 
-export function Home() {
-  
-  return (
-    <>
-      <h3>Home</h3>
-    </>
-  )
-}
 
 function Inventory() {
+  
+  console.log("Rendering Inventory. ")
+
+  useEffect(() => {
+    console.log("Mounting Inventory.");
+  }, []);
+
   let params = useParams();
   const inventoryId = params.id;
   
-  const [items, setItems] = useState([]);
   const [itemName, setItemName] = useState("");
   const [itemDescription, setItemDescription] = useState("");
   const [inventory, setInventory] = useState({});
-
-  const context = useContext(authContext);
-  const inventories = context.inventories;
-  const setInventories = context.setInventories;
-
-  const getInventories = () => {
-    GetInventories(context.bearerToken, setInventories);
-  }
+  const [items, setItems] = useState([]);
+  const [inventories, setInventories] = useState([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState("");
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [itemToMove, setItemToMove] = useState("");
+  const [newLocation, setNewLocation] = useState("");
 
   const getInventory = () => {
-    GetInventory(context.bearerToken, inventoryId, setInventory);
+    GetInventory(inventoryId, setInventory);
   }
 
   const getInventoryContents = async () => {
-    GetInventoryContents(context.bearerToken, inventoryId, setItems);
+    GetInventoryContents(inventoryId, setItems);
   }
 
-  const deleteItem = async (item) => {
-    DeleteItem(context.bearerToken, item.id, items, setItems);
-  }
+  useEffect(() => {
+    GetInventories(setInventories);
+  }, [])
 
   const createItem = async () => {
     let item = {
@@ -85,66 +88,121 @@ function Inventory() {
       'description': itemDescription,
       'inventoryId': inventoryId
     }
-    CreateItem(context.bearerToken, item, items, setItems);
+    CreateItem(item, items, setItems);
   }
 
   const moveItem = async (item, newInventoryId) => {
-    MoveItem(context.bearerToken, item, newInventoryId, items, setItems);
+    MoveItem(item, newInventoryId, items, setItems);
+  }
+
+  const handleClickDelete = (item) => {
+    setShowDeleteModal(true);
+    setItemToDelete(item);
+  }
+
+  const handleClickDeleteConfirm = () => {
+    setShowDeleteModal(false);
+    DeleteItem(itemToDelete.id, items, setItems);
+  }
+
+  const handleAbortDeleteConfirm = () => {
+    setShowDeleteModal(false);
+  }
+
+  const handleClickMove = (item) => {
+    setShowMoveModal(true);
+    setItemToMove(item);
+  }
+
+  const handleClickMoveConfirm = () => {
+    MoveItem(itemToMove, newLocation.id, items, setItems);
   }
 
   useEffect(() => {
     getInventoryContents();
-    getInventories();
     getInventory();
+    // eslint-disable-next-line
   }, []);
 
-  const inventoryOptions = inventories.map((inventory, _) => {
+  const inventoryOptions = inventories.map((inventoryOption, _) => {
+    // Don't include the current inventory in the 'Move' options.
+    if (inventoryOption.id === inventory.id) { return null; }
     return (
-      <option key={inventory.id} value={inventory.id}>{inventory.name}</option>
+      <option key={inventoryOption.id} value={inventoryOption.id}>{inventoryOption.name}</option>
     )
   });
 
   const inventoryItems = items.map((item, _) => {
     return (
-      <Col key={item.id}>
-        <Card>
-          <Card.Body>
-            <Card.Title>{item.name}</Card.Title>
-            <Card.Text>
-              {item.description}
-            </Card.Text>
-            <Button
-              variant="primary"
-              onClick={() => deleteItem(item)}
-            >Delete</Button>
-            
-            <Form.Select
-              aria-label="Default select example"
-              id={"move_item_" + item.id}
-            >
-              <option value="" hidden>Move to other inventory</option>
-              {inventoryOptions}
-            </Form.Select>
-            <Button
-              variant="primary"
-              onClick={() => moveItem(item, document.getElementById("move_item_" + item.id).value)}
-            >Move</Button>
-          </Card.Body>
-        </Card>
-      </Col>
+      <Row key={item.id}>
+        <Col>
+          <Card>
+            <Card.Header className="d-flex">
+              {item.name}
+              <FontAwesomeIcon
+                icon={faTrash}
+                onClick={() => handleClickDelete(item)}
+                className="ms-auto"
+              />
+            </Card.Header>
+            <Card.Body>
+              <Card.Text>
+                {item.description}
+              </Card.Text>
+            </Card.Body>
+            <Card.Footer className="d-flex">
+              <FontAwesomeIcon
+                icon={faTrash}
+                onClick={() => handleClickMove(item)}
+                className="ms-auto"
+              />
+            </Card.Footer>
+          </Card>
+        </Col>
+      </Row>
     )
   });
   
   return (
     <>
+    <AppNavbar />
+
+    <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+      <Modal.Header closeButton>
+        <Modal.Title>Delete Item</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>Are you sure you want to permanently delete "{itemToDelete.name}"?</Modal.Body>
+      <Modal.Footer>
+          <Button onClick={handleAbortDeleteConfirm}>Go Back</Button>
+          <Button onClick={handleClickDeleteConfirm} variant="danger">Delete</Button>
+      </Modal.Footer>
+    </Modal>
+
+    <Modal show={showMoveModal} onHide={() => setShowMoveModal(false)}>
+      <Modal.Header closeButton>
+        <Modal.Title>Moving "{itemToMove.name}"</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <Form.Select>
+          <option value="" hidden>Select Destination</option>
+          {inventoryOptions}
+        </Form.Select>
+      </Modal.Body>
+      <Modal.Footer>
+          <Button onClick={handleClickMoveConfirm}>Move</Button>
+      </Modal.Footer>
+    </Modal>
+
     <Container fluid>
       <Row>
-        <Col className="text-center" >
+        <Col className="text-center">
           <h3>{inventory.name}</h3>
         </Col>
       </Row>
       <Row>
-        {inventoryItems}
+        <Col lg={{span: 6, offset: 3}}>
+          {inventoryItems}
+        </Col>
       </Row>
       <Stack gap={3} className="col-xxl-2 offset-xxl-5 col-md-4 offset-md-4">
         <div className="text-center">
@@ -185,29 +243,34 @@ function Inventory() {
 
 
 function Inventories() {
+
+  console.log("Rendering Inventories. ")
+
+  useEffect(() => {
+    console.log("Mounting Inventories.");
+  }, []);
+
   const [inventoryName, setInventoryName] = useState("");
   const [inventoryDescription, setInventoryDescription] = useState("");
+  const [inventories, setInventories] = useState([]);
 
-  const context = useContext(authContext);
+  const navigate = useNavigate();
 
-  const inventories = context.inventories;
-  const setInventories = context.setInventories;
+  useEffect(() => {
+    GetInventories(setInventories);
+  }, []);
 
   const createInventory = async () => {
     let inventory = {
       'name': inventoryName,
       'description': inventoryDescription
     };
-    CreateInventory(context.bearerToken, inventory, inventories, setInventories);
+    CreateInventory(inventory, inventories, setInventories);
   };
 
-  const deleteInventory = async (inventory) => {
-    DeleteInventory(context.bearerToken, inventory.id, inventories, setInventories);
+  const deleteInventory = async (inventoryId) => {
+    DeleteInventory(inventoryId, inventories, setInventories);
   }
-
-  useEffect(() => {
-
-  }, []);
 
   const inventoryList = inventories.map((inventory, inventoryIndex) => {
     return (
@@ -218,12 +281,13 @@ function Inventories() {
           <Card.Text>
             {inventory.description}
           </Card.Text>
-          <a href={"/inventory/" + inventory.id}>
-          <Button variant="primary">View</Button>
-          </a>
+          <Button
+            variant="primary"
+            onClick={() => navigate("/inventory/" + inventory.id)}
+          >View</Button>
           <Button
             variant="warning"
-            onClick={() => deleteInventory(inventory)}
+            onClick={() => deleteInventory(inventory.id)}
           >Delete</Button>
         </Card.Body>
       </Card>
@@ -233,6 +297,7 @@ function Inventories() {
 
   return (
     <>
+      <AppNavbar />
       <Container fluid>
         <Row xs={1} md={2} className="g-4">
           {inventoryList}
@@ -274,49 +339,34 @@ function Inventories() {
   )
 }
 
-export function Settings() {
-  
-  return (
-    <>
-      <Container fluid>
-        <Row>
-          <Col>
-            <h3>Settings</h3>
-          </Col>
-        </Row>
-      </Container>
-    </>
-  )
-}
-
 
 export function App() {
-
-  const context = useContext(authContext);
+  console.log("Rendering App.")
+  useEffect(() => {
+    console.log("Mounting App.");
+  }, []);
 
   return (
-      context.contextLoaded ? (
-      <BrowserRouter>
-        <Routes>
-          <Route exact path="/" element={<PrivateRoute />} >
-            <Route exact path="/" element={<Home />} />
-          </Route>
-          <Route exact path="/settings" element={<PrivateRoute />} >
-            <Route exact path="/settings" element={<Settings />} />
-          </Route>
-          <Route exact path="/inventories" element={<PrivateRoute />} >
-            <Route exact path="/inventories" element={<Inventories />} />
-          </Route>
-          <Route exact path="/inventory/:id" element={<PrivateRoute />} >
-            <Route exact path="/inventory/:id" element={<Inventory />} />
-          </Route>
-          <Route exact path="/game" element={<PrivateRoute />} >
-            <Route exact path="/game" element={<Game />} />
-          </Route>
-          <Route path="/login" element={<Login />} />
-          <Route path="/logout" element={<Logout />} />
-          <Route path="/register" element={<Register />} />
-        </Routes>
-      </BrowserRouter> ) : null
+        <>
+        <BrowserRouter>
+          <Routes>
+            <Route exact path="/" element={<PrivateRoute />} >
+              <Route exact path="/" element={<Inventories />} />
+            </Route>
+            <Route exact path="/inventories" element={<PrivateRoute />} >
+              <Route exact path="/inventories" element={<Inventories />} />
+            </Route>
+            <Route exact path="/inventory/:id" element={<PrivateRoute />} >
+              <Route exact path="/inventory/:id" element={<Inventory />} />
+            </Route>
+            <Route exact path="/game" element={<PrivateRoute />} >
+              <Route exact path="/game" element={<Game />} />
+            </Route>
+            <Route path="/login" element={<Login />} />
+            <Route path="/logout" element={<Logout />} />
+            <Route path="/register" element={<Register />} />
+          </Routes>
+        </BrowserRouter>
+        </>
   )
 }
