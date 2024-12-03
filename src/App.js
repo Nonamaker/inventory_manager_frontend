@@ -6,7 +6,7 @@ import Navbar from 'react-bootstrap/Navbar';
 import NavDropdown from 'react-bootstrap/NavDropdown';
 import {Card, Row, Col, Stack, Form, Button, Modal} from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faTrash, faShareFromSquare } from '@fortawesome/free-solid-svg-icons';
 
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router";
 
@@ -65,10 +65,10 @@ function Inventory() {
   const [items, setItems] = useState([]);
   const [inventories, setInventories] = useState([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState("");
   const [showMoveModal, setShowMoveModal] = useState(false);
-  const [itemToMove, setItemToMove] = useState("");
-  const [newLocation, setNewLocation] = useState("");
+  const [newLocationId, setNewLocationId] = useState("");
+
+  const [selectedItem, setSelectedItem] = useState("");
 
   const getInventory = () => {
     GetInventory(inventoryId, setInventory);
@@ -91,18 +91,14 @@ function Inventory() {
     CreateItem(item, items, setItems);
   }
 
-  const moveItem = async (item, newInventoryId) => {
-    MoveItem(item, newInventoryId, items, setItems);
-  }
-
   const handleClickDelete = (item) => {
     setShowDeleteModal(true);
-    setItemToDelete(item);
+    setSelectedItem(item);
   }
 
   const handleClickDeleteConfirm = () => {
     setShowDeleteModal(false);
-    DeleteItem(itemToDelete.id, items, setItems);
+    DeleteItem(selectedItem.id, items, setItems);
   }
 
   const handleAbortDeleteConfirm = () => {
@@ -111,11 +107,12 @@ function Inventory() {
 
   const handleClickMove = (item) => {
     setShowMoveModal(true);
-    setItemToMove(item);
+    setSelectedItem(item);
   }
 
   const handleClickMoveConfirm = () => {
-    MoveItem(itemToMove, newLocation.id, items, setItems);
+    setShowMoveModal(false);
+    MoveItem(selectedItem, newLocationId, items, setItems);
   }
 
   useEffect(() => {
@@ -134,7 +131,7 @@ function Inventory() {
 
   const inventoryItems = items.map((item, _) => {
     return (
-      <Row key={item.id}>
+      <Row key={item.id} className="mt-5">
         <Col>
           <Card>
             <Card.Header className="d-flex">
@@ -152,7 +149,7 @@ function Inventory() {
             </Card.Body>
             <Card.Footer className="d-flex">
               <FontAwesomeIcon
-                icon={faTrash}
+                icon={faShareFromSquare}
                 onClick={() => handleClickMove(item)}
                 className="ms-auto"
               />
@@ -171,7 +168,7 @@ function Inventory() {
       <Modal.Header closeButton>
         <Modal.Title>Delete Item</Modal.Title>
       </Modal.Header>
-      <Modal.Body>Are you sure you want to permanently delete "{itemToDelete.name}"?</Modal.Body>
+      <Modal.Body>Are you sure you want to permanently delete "{selectedItem.name}"?</Modal.Body>
       <Modal.Footer>
           <Button onClick={handleAbortDeleteConfirm}>Go Back</Button>
           <Button onClick={handleClickDeleteConfirm} variant="danger">Delete</Button>
@@ -180,10 +177,12 @@ function Inventory() {
 
     <Modal show={showMoveModal} onHide={() => setShowMoveModal(false)}>
       <Modal.Header closeButton>
-        <Modal.Title>Moving "{itemToMove.name}"</Modal.Title>
+        <Modal.Title>Moving "{selectedItem.name}" to {newLocationId}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        <Form.Select>
+        <Form.Select
+          onChange={(e) => {setNewLocationId(e.target.value);}}
+        >
           <option value="" hidden>Select Destination</option>
           {inventoryOptions}
         </Form.Select>
