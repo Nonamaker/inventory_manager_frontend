@@ -1,11 +1,8 @@
 import { useState, useContext, useEffect } from 'react';
 
-import Container from 'react-bootstrap/Container';
-import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button';
-import Alert from 'react-bootstrap/Alert';
-import Stack from 'react-bootstrap/Stack';
-import InputGroup from 'react-bootstrap/InputGroup';
+import { useLiveQuery } from 'dexie-react-hooks';
+
+import { Alert, Button, Card, Container, Form, InputGroup, Stack } from 'react-bootstrap';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
@@ -15,6 +12,7 @@ import { useNavigate } from "react-router";
 import { getCookieByName } from './utils.js';
 import { authContext } from './contexts';
 import { AppNavbar } from './App.js';
+import { db } from './db.js';
 
 
 export function Register() {
@@ -146,14 +144,68 @@ export function Register() {
               attemptRegister();
             }}
           >Register</Button>
+          <Button variant="secondary"
+            onClick={CreateLocalAccount}
+          >Create an Offline Account</Button>
           <Form.Text className="text-muted">
-            Already have an account? <a href="#/" onClick={() => navigate("/login")}>Login</a>
+            Already have an account? <a href="#/" onClick={() => navigate("/login")}>Login</a> or <a href="#/" onClick={() => navigate("/select-local-account")}>offline account</a>
           </Form.Text>
         </div>
         <ErrorSection />  
       </Stack>
     </Container>
     </>
+  )
+}
+
+export function CreateLocalAccount() {
+  const [name, setName] = useState('');
+
+  const navigate = useNavigate();
+  const context = useContext(authContext);
+
+  async function handleCreateUser() {
+      try {
+          const id = await db.users.add({
+              name
+          })
+          console.log(id);
+          navigate("/");
+          context.setUser(await db.user.get(id));
+      } catch (error) {
+          console.log(error);
+      }
+  }
+
+  return (
+      <>
+      <AppNavbar />
+      <Container fluid>
+        <Stack gap={3} className="col-xxl-2 offset-xxl-5 col-md-4 offset-md-4">
+          <div className="text-center">
+            <h3>Create Local User</h3>
+          </div>
+          <div>
+            <Form.Label>Name</Form.Label>
+            <Form.Control
+                type="text"
+                name="userName"
+                onChange={(e) => {
+                    setName(e.target.value);
+                }}
+            />
+          </div>
+          <div className="d-grid gap-2">
+            <Button
+                onClick={handleCreateUser}
+            >Create</Button>
+            <Form.Text className="text-muted">
+              Local account data is stored completely in the browser and will be deleted if site data is deleted. Local accounts are not secured and can be accessed by anyone with access to your computer.
+            </Form.Text>
+          </div>
+        </Stack>
+      </Container>
+      </>
   )
 }
 
@@ -288,12 +340,50 @@ export function Login() {
                 attemptLogin(email, password, aContext.setAuthenticated, navigate);
               }}
             >Login</Button>
+            <Button variant="secondary"
+              onClick={() => navigate("/select-local-account")}
+            >Use an Offline Account</Button>
             <Form.Text className="text-muted">
-              Don't have an account? <a href="#/" onClick={() => navigate("/register")}>Register</a>
+              Don't have an account? <a href="#/" onClick={() => navigate("/register")}>Register</a> or <a href="#/" onClick={() => navigate("/create-local-account")}>create an offline account</a>.
             </Form.Text>
           </div>
         </Stack>
       </Container>
+    </>
+  )
+}
+
+export function SelectLocalAccount() {
+
+  const users = useLiveQuery(() => db.users.toArray());
+
+  const context = useContext(authContext);
+  const navigate = useNavigate();
+
+  return (
+    <>
+    <AppNavbar />
+    <Container fluid>
+      <Stack gap={3} className="col-xxl-2 offset-xxl-5 col-md-4 offset-md-4">
+        {users?.map((user) => (
+          <Card key={user.id}>
+            <Card.Body>
+              <Card.Title>{user.name}</Card.Title>
+              <Card.Text>
+                example text
+              </Card.Text>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  context.setUser(user);
+                  navigate("/")
+                }}
+              >Select</Button>
+            </Card.Body>
+          </Card>
+        ))}
+      </Stack>
+    </Container>
     </>
   )
 }
@@ -309,7 +399,10 @@ export function Logout() {
 
   useEffect(() => {
     console.log("Log out")
+    // TODO Handle this cleanup in the context itself?
     context.setAuthenticated(false);
+    context.setBearerToken("");
+    context.setUser("");
     document.cookie = "bearerToken=;Max-Age:0";
     document.cookie = "refreshToken=;Max-Age:0";
     // Un-cache everything when user changes

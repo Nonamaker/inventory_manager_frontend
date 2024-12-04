@@ -7,6 +7,6 @@ export function PrivateRoute() {
   const context = useContext(authContext);
 
   return (
-    context.authenticated ? <Outlet /> : <Navigate to="/login" />
+    context.user !== "" ? <Outlet /> : <Navigate to="/login" />
   )
 }
