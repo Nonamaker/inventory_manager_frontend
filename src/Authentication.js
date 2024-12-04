@@ -2,10 +2,10 @@ import { useState, useContext, useEffect } from 'react';
 
 import { useLiveQuery } from 'dexie-react-hooks';
 
-import { Alert, Button, Card, Container, Form, InputGroup, Stack } from 'react-bootstrap';
+import { Alert, Button, Card, Container, Form, InputGroup, Modal, Stack } from 'react-bootstrap';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+import { faEye, faEyeSlash, faTrash } from '@fortawesome/free-solid-svg-icons';
 
 import { useNavigate } from "react-router";
 
@@ -166,12 +166,9 @@ export function CreateLocalAccount() {
 
   async function handleCreateUser() {
       try {
-          const id = await db.users.add({
-              name
-          })
-          console.log(id);
+          const id = await db.users.add({name});
+          context.setUser(await db.users.get(id));
           navigate("/");
-          context.setUser(await db.user.get(id));
       } catch (error) {
           console.log(error);
       }
@@ -358,32 +355,87 @@ export function Login() {
 export function SelectLocalAccount() {
 
   const users = useLiveQuery(() => db.users.toArray());
+  const [selectedUser, setSelectedUser] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const context = useContext(authContext);
   const navigate = useNavigate();
 
+  const handleClickDelete = (user) => {
+    setShowDeleteModal(true);
+    setSelectedUser(user);
+  }
+
+  const handleClickDeleteConfirm = async () => {
+    setShowDeleteModal(false);
+    // Delete all items and inventories, then the user
+    const inventories = await db.inventories.where({ownerId: selectedUser.id}).toArray();
+    console.log(inventories);
+    const items = await db.items.where('inventoryId').anyOf(
+      inventories.map((inventory) => {return inventory.id})
+    ).toArray()
+    console.log(items);
+    
+    db.items.bulkDelete(items.map((item) => {return item.id}));
+    db.inventories.bulkDelete(items.map((inventory) => {return inventory.id}));
+    db.users.where({id: parseInt(selectedUser.id)}).delete()
+  }
+
+  const handleAbortDeleteConfirm = () => {
+    setShowDeleteModal(false);
+  }
+
   return (
     <>
     <AppNavbar />
+
+    <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+      <Modal.Header closeButton>
+        <Modal.Title>Delete User</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>Are you sure you want to permanently delete "{selectedUser.name}"?</Modal.Body>
+      <Modal.Footer>
+          <Button onClick={handleAbortDeleteConfirm}>Go Back</Button>
+          <Button onClick={handleClickDeleteConfirm} variant="danger">Delete</Button>
+      </Modal.Footer>
+    </Modal>
+
     <Container fluid>
       <Stack gap={3} className="col-xxl-2 offset-xxl-5 col-md-4 offset-md-4">
-        {users?.map((user) => (
-          <Card key={user.id}>
-            <Card.Body>
-              <Card.Title>{user.name}</Card.Title>
-              <Card.Text>
-                example text
-              </Card.Text>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  context.setUser(user);
-                  navigate("/")
-                }}
-              >Select</Button>
-            </Card.Body>
-          </Card>
-        ))}
+        {users?.length > 0 ?
+          users.map((user) => (
+            <Card key={user.id}>
+                <Card.Header className="d-flex">
+                  {user.name}
+                  <FontAwesomeIcon
+                    icon={faTrash}
+                    onClick={() => handleClickDelete(user)}
+                    className="ms-auto"
+                  />
+                </Card.Header>
+                <Card.Body>
+                  <Card.Text>
+                    example text
+                  </Card.Text>
+                </Card.Body>
+                <Card.Footer>
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      context.setUser(user);
+                      navigate("/")
+                    }}
+                  >Select</Button>
+                </Card.Footer>
+            </Card>
+          ))
+        :
+          <div className="d-grid gap-2">
+            <Button variant="primary"
+              onClick={() => navigate("/create-local-account")}
+            >Create an Offline Account</Button>
+          </div>
+        }
       </Stack>
     </Container>
     </>

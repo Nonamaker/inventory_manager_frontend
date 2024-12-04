@@ -94,7 +94,7 @@ function Inventory() {
     let item = {
       'name': itemName,
       'description': itemDescription,
-      'inventoryId': inventoryId
+      'inventoryId': parseInt(inventoryId)
     }
     CreateItem(item, items, setItems);
   }
