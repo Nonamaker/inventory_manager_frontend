@@ -14,6 +14,7 @@ export function AuthContextProvider({ children }) {
   const [bearerToken, setBearerToken] = useState("");
   const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState("");
+  const [isLocalUser, setIsLocalUser] = useState(true);
 
   useEffect(() => {
     console.log("Mounting AuthContext");
@@ -46,7 +47,8 @@ export function AuthContextProvider({ children }) {
   const state = {
     bearerToken, setBearerToken,
     authenticated, setAuthenticated,
-    user, setUser
+    user, setUser,
+    isLocalUser, setIsLocalUser
   }
 
   return (

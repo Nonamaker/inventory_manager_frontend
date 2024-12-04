@@ -209,7 +209,7 @@ export function CreateLocalAccount() {
   )
 }
 
-function attemptLogin(email, password, setAuthenticated, navigate){
+function attemptLogin(email, password, context, navigate){
   fetch(
     process.env.REACT_APP_AUTH_API + 'login',
     {
@@ -229,7 +229,9 @@ function attemptLogin(email, password, setAuthenticated, navigate){
         const data = await response.json();
         document.cookie = "bearerToken="+data.accessToken+";Max-Age="+data.expiresIn;
         document.cookie = "refreshToken="+data.refreshToken;
-        setAuthenticated(true);
+        context.setAuthenticated(true);
+        context.setUser(email);
+        context.setIsLocalUser(false);
         navigate("/");
     }
   });
@@ -284,18 +286,18 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const aContext = useContext(authContext);
+  const context = useContext(authContext);
   const navigate = useNavigate();
 
   // If a bearerToken cookie is present, check to see if it still works. If not,
   // check if the refreshToken is present and works. If either work, authenticate
   // user and redirect away from login page.
   useEffect(() => {
-    if (aContext.authenticated) {
+    if (context.user !== "") {
       navigate("/inventories");
     }
   // eslint-disable-next-line
-  }, [aContext.authenticated])
+  }, [context.user])
 
   return (
     <>
@@ -337,7 +339,7 @@ export function Login() {
           <div className="d-grid gap-2">
             <Button
               onClick={() => {
-                attemptLogin(email, password, aContext.setAuthenticated, navigate);
+                attemptLogin(email, password, context, navigate);
               }}
             >Login</Button>
             <Button variant="secondary"
@@ -403,6 +405,7 @@ export function Logout() {
     context.setAuthenticated(false);
     context.setBearerToken("");
     context.setUser("");
+    context.setIsLocalUser(false)
     document.cookie = "bearerToken=;Max-Age:0";
     document.cookie = "refreshToken=;Max-Age:0";
     // Un-cache everything when user changes

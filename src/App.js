@@ -75,6 +75,8 @@ function Inventory() {
 
   const [selectedItem, setSelectedItem] = useState("");
 
+  const context = useContext(authContext);
+
   const getInventory = () => {
     GetInventory(inventoryId, setInventory);
   }
@@ -84,7 +86,8 @@ function Inventory() {
   }
 
   useEffect(() => {
-    GetInventories(setInventories);
+    GetInventories(context, setInventories);
+    // eslint-disable-next-line
   }, [])
 
   const createItem = async () => {
@@ -259,21 +262,24 @@ function Inventories() {
   const [inventories, setInventories] = useState([]);
 
   const navigate = useNavigate();
+  const context = useContext(authContext);
 
   useEffect(() => {
-    GetInventories(setInventories);
+    GetInventories(context, setInventories);
+    // eslint-disable-next-line
   }, []);
 
   const createInventory = async () => {
     let inventory = {
       'name': inventoryName,
-      'description': inventoryDescription
+      'description': inventoryDescription,
+      'ownerId': context.user.id
     };
     CreateInventory(inventory, inventories, setInventories);
   };
 
   const deleteInventory = async (inventoryId) => {
-    DeleteInventory(inventoryId, inventories, setInventories);
+    DeleteInventory(context, inventoryId, inventories, setInventories);
   }
 
   const inventoryList = inventories.map((inventory, inventoryIndex) => {
@@ -281,7 +287,7 @@ function Inventories() {
       <Col key={inventoryIndex}>
       <Card>
         <Card.Body>
-          <Card.Title>{inventory.name}</Card.Title>
+          <Card.Title>[{inventory.id}] {inventory.name}</Card.Title>
           <Card.Text>
             {inventory.description}
           </Card.Text>
