@@ -108,7 +108,7 @@ export function Game() {
   const [items, setItems] = useState([]);
 
   const fetchData = async () => {
-    let res = await fetch('http://192.168.1.10/api/inventoryitems');
+    let res = await fetch(process.env.REACT_APP_API + 'inventoryitems');
     const data = await res.json();
     setItems(data);
   }
