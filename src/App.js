@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 
 import Container from 'react-bootstrap/Container';
 import Nav from 'react-bootstrap/Nav';
@@ -10,17 +10,19 @@ import { faTrash, faShareFromSquare } from '@fortawesome/free-solid-svg-icons';
 
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router";
 
+import { authContext } from './contexts';
 import { PrivateRoute } from './PrivateRoute.js';
 import { Game } from './Game.js';
 import { CreateInventory, CreateItem, DeleteInventory, DeleteItem, GetInventories, GetInventory, GetInventoryContents, MoveItem } from './InventoryAPI.js';
 
 import { useParams } from "react-router";
 
-import {Login, Logout, Register} from './Authentication.js';
+import {Login, Logout, Register, CreateLocalAccount, SelectLocalAccount} from './Authentication.js';
 
 
 export function AppNavbar() {
   const navigate = useNavigate();
+  const context = useContext(authContext);
   return (
     <Navbar expand="lg" className="bg-body-tertiary mb-5">
       <Container>
@@ -33,13 +35,16 @@ export function AppNavbar() {
             >
               Inventories
             </Nav.Link>
-            <NavDropdown title="Profile" id="basic-nav-dropdown">
-              <NavDropdown.Item
-                onClick={() => navigate("/logout")}
-              >
-                 Logout
-              </NavDropdown.Item>
-            </NavDropdown>
+            {context.user !== "" ?
+              <NavDropdown title="Profile" id="basic-nav-dropdown">
+                <NavDropdown.Item>{context.user.name}</NavDropdown.Item>
+                <NavDropdown.Divider />
+                <NavDropdown.Item onClick={() => navigate("/logout")}>
+                  Logout
+                </NavDropdown.Item>
+              </NavDropdown>
+              : null
+            }
           </Nav>
         </Navbar.Collapse>
       </Container>
@@ -70,6 +75,8 @@ function Inventory() {
 
   const [selectedItem, setSelectedItem] = useState("");
 
+  const context = useContext(authContext);
+
   const getInventory = () => {
     GetInventory(inventoryId, setInventory);
   }
@@ -79,14 +86,15 @@ function Inventory() {
   }
 
   useEffect(() => {
-    GetInventories(setInventories);
+    GetInventories(context, setInventories);
+    // eslint-disable-next-line
   }, [])
 
   const createItem = async () => {
     let item = {
       'name': itemName,
       'description': itemDescription,
-      'inventoryId': inventoryId
+      'inventoryId': parseInt(inventoryId)
     }
     CreateItem(item, items, setItems);
   }
@@ -254,21 +262,24 @@ function Inventories() {
   const [inventories, setInventories] = useState([]);
 
   const navigate = useNavigate();
+  const context = useContext(authContext);
 
   useEffect(() => {
-    GetInventories(setInventories);
+    GetInventories(context, setInventories);
+    // eslint-disable-next-line
   }, []);
 
   const createInventory = async () => {
     let inventory = {
       'name': inventoryName,
-      'description': inventoryDescription
+      'description': inventoryDescription,
+      'ownerId': context.user.id
     };
     CreateInventory(inventory, inventories, setInventories);
   };
 
   const deleteInventory = async (inventoryId) => {
-    DeleteInventory(inventoryId, inventories, setInventories);
+    DeleteInventory(context, inventoryId, inventories, setInventories);
   }
 
   const inventoryList = inventories.map((inventory, inventoryIndex) => {
@@ -276,7 +287,7 @@ function Inventories() {
       <Col key={inventoryIndex}>
       <Card>
         <Card.Body>
-          <Card.Title>{inventory.name}</Card.Title>
+          <Card.Title>[{inventory.id}] {inventory.name}</Card.Title>
           <Card.Text>
             {inventory.description}
           </Card.Text>
@@ -364,6 +375,8 @@ export function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/logout" element={<Logout />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/create-local-account" element={<CreateLocalAccount />} />
+            <Route path="/select-local-account" element={<SelectLocalAccount />} />
           </Routes>
         </BrowserRouter>
         </>
