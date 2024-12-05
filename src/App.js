@@ -21,7 +21,6 @@ import { CreateInventory, CreateItem, DeleteInventory, DeleteItem, GetInventorie
 import { useParams } from "react-router";
 
 import {Login, Logout, Register, CreateLocalAccount, SelectLocalAccount} from './Authentication.js';
-import Dexie from "dexie";
 
 
 export function AppNavbar() {
@@ -70,10 +69,8 @@ export function AppNavbar() {
                     db = await importDB(e.target.files[0]);
                     console.log("Database imported");
                     // PICKUP HERE
-                    // This is partially working, but items aren't appearing in inventories (they are imported)
                     // When importing data the page needs to be reloaded because the app isn't picking up the
                     //  indexeddb changes automatically.
-                    // Need to make sure items are deleted when an inventory is deleted too
                   });
                 }}
               />

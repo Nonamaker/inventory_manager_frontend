@@ -34,6 +34,10 @@ export async function CreateInventory(inventory, inventories, setInventories) {
 }
 
 export async function DeleteInventory(context, inventoryId, inventories, setInventories) {
+  // Delete contained items first
+  const items = await db.items.where({inventoryId: parseInt(inventoryId)}).toArray();
+  db.items.bulkDelete(items.map((item) => {return item.id}));
+
   await db.inventories.where(
     {
       ownerId: context.user.id,
@@ -124,7 +128,7 @@ export async function GetInventory(inventoryId, setInventory) {
 
 export async function GetInventoryContents(inventoryId, setItems) {
   /* Fetches and sets the details of all items in the inventory specified by inventoryId. */
-  setItems(await db.items.where({inventoryId: inventoryId}).toArray() ?? []);
+  setItems(await db.items.where({inventoryId: parseInt(inventoryId)}).toArray() ?? []);
   // const originalFetch = (onError) => {
   //   fetch(
   //     process.env.REACT_APP_API + 'inventories/' + inventoryId + "/contents/",
