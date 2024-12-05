@@ -21,6 +21,7 @@ import { CreateInventory, CreateItem, DeleteInventory, DeleteItem, GetInventorie
 import { useParams } from "react-router";
 
 import {Login, Logout, Register, CreateLocalAccount, SelectLocalAccount} from './Authentication.js';
+import { useLiveQuery } from "dexie-react-hooks";
 
 
 export function AppNavbar() {
@@ -42,6 +43,9 @@ export function AppNavbar() {
               <NavDropdown title="Profile" id="basic-nav-dropdown">
                 <NavDropdown.Item>{context.user.name}</NavDropdown.Item>
                 <NavDropdown.Divider />
+                <NavDropdown.Item onClick={() => navigate("/history")}>
+                  History
+                </NavDropdown.Item>
                 <NavDropdown.Item onClick={() => navigate("/logout")}>
                   Logout
                 </NavDropdown.Item>
@@ -117,6 +121,42 @@ function ImportDBFile() {
   );
 }
 
+function History() {
+  const context = useContext(authContext);
+
+  console.log(context.user.id);
+
+  const history = useLiveQuery(
+    () => db.history.where({userId: context.user.id}).toArray()
+  );
+
+  console.log(history);
+
+  const timeline = history?.map((record) => {
+    return (
+      <Card key={record.id}>
+        <Card.Header className="d-flex">
+          {record.action} - {record.ts}
+        </Card.Header>
+        <Card.Body>
+          <pre>{JSON.stringify(record.data, null, 2)}</pre>
+        </Card.Body>
+      </Card>
+    )
+  });
+
+  return (
+    <>
+    <AppNavbar />
+    <Container fluid>
+      <Stack gap={3} className="col-xxl-2 offset-xxl-5 col-md-4 offset-md-4">
+      {timeline}
+      </Stack>
+    </Container>
+    </>
+  )
+}
+
 
 function Inventory() {
   
@@ -171,7 +211,7 @@ function Inventory() {
 
   const handleClickDeleteConfirm = () => {
     setShowDeleteModal(false);
-    DeleteItem(selectedItem.id, items, setItems);
+    DeleteItem(selectedItem, items, setItems);
   }
 
   const handleAbortDeleteConfirm = () => {
@@ -343,8 +383,8 @@ function Inventories() {
     CreateInventory(inventory, inventories, setInventories);
   };
 
-  const deleteInventory = async (inventoryId) => {
-    DeleteInventory(context, inventoryId, inventories, setInventories);
+  const deleteInventory = async (inventory) => {
+    DeleteInventory(context, inventory, inventories, setInventories);
   }
 
   const inventoryList = inventories.map((inventory, inventoryIndex) => {
@@ -362,7 +402,7 @@ function Inventories() {
           >View</Button>
           <Button
             variant="warning"
-            onClick={() => deleteInventory(inventory.id)}
+            onClick={() => deleteInventory(inventory)}
           >Delete</Button>
         </Card.Body>
       </Card>
@@ -436,6 +476,9 @@ export function App() {
             </Route>
             <Route exact path="/game" element={<PrivateRoute />} >
               <Route exact path="/game" element={<Game />} />
+            </Route>
+            <Route exact path="/history" element={<PrivateRoute />} >
+              <Route exact path="/history" element={<History />} />
             </Route>
             <Route path="/login" element={<Login />} />
             <Route path="/logout" element={<Logout />} />
