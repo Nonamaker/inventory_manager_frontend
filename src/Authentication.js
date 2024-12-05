@@ -370,11 +370,9 @@ export function SelectLocalAccount() {
     setShowDeleteModal(false);
     // Delete all items and inventories, then the user
     const inventories = await db.inventories.where({ownerId: selectedUser.id}).toArray();
-    console.log(inventories);
     const items = await db.items.where('inventoryId').anyOf(
       inventories.map((inventory) => {return inventory.id})
     ).toArray()
-    console.log(items);
     
     db.items.bulkDelete(items.map((item) => {return item.id}));
     db.inventories.bulkDelete(items.map((inventory) => {return inventory.id}));

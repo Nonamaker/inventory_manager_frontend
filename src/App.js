@@ -1,4 +1,7 @@
-import { useEffect, useState, useContext } from 'react';
+import {exportDB, importDB} from "dexie-export-import";
+import {db} from "./db.js";
+
+import { useEffect, useState, useContext, useRef } from 'react';
 
 import Container from 'react-bootstrap/Container';
 import Nav from 'react-bootstrap/Nav';
@@ -45,11 +48,73 @@ export function AppNavbar() {
               </NavDropdown>
               : null
             }
+            <NavDropdown title="Data">
+              <ExportDBFile />
+              <ImportDBFile />
+            </NavDropdown>
           </Nav>
         </Navbar.Collapse>
       </Container>
     </Navbar>
   )
+}
+
+
+function ExportDBFile() {
+  return (
+    <NavDropdown.Item 
+      onClick={
+        async () => {
+          const tempLink = document.createElement('a');
+          tempLink.href = URL.createObjectURL(await exportDB(db));
+          tempLink.setAttribute('download', 'InventoryManagerExport.blob');
+          tempLink.click();
+        }
+      }
+    >
+      Export Data
+    </NavDropdown.Item>
+  )
+}
+
+
+function ImportDBFile() {
+  const inputFile = useRef(null);
+
+  const handleFileUpload = e => {
+    const { files } = e.target;
+    if (files && files.length) {
+      db.delete().then( async () => {
+        console.log("Database deleted");
+        console.log(files[0]);
+        db = await importDB(files[0]).then( async () => {
+          console.log("Database imported");
+          window.location.reload();
+        });
+      });
+    }
+  };
+
+  const onButtonClick = () => {
+    inputFile.current.click();
+    console.log(inputFile);
+    console.log("Button clicked!");
+  };
+
+  return (
+    <>
+    <input
+      style={{ display: "none" }}
+      accept=".blob"
+      ref={inputFile}
+      onChange={handleFileUpload}
+      type="file"
+    />
+    <NavDropdown.Item onClick={onButtonClick}>
+      Import
+    </NavDropdown.Item>
+    </>
+  );
 }
 
 

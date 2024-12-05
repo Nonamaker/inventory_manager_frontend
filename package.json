@@ -13,6 +13,7 @@
     "@testing-library/user-event": "^13.5.0",
     "bootstrap": "^5.3.3",
     "dexie": "^4.0.10",
+    "dexie-export-import": "^4.1.4",
     "dexie-react-hooks": "^1.1.7",
     "dotenv": "^16.4.7",
     "react": "^18.3.1",
