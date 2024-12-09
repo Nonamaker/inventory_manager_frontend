@@ -373,6 +373,8 @@ export function SelectLocalAccount() {
     const items = await db.items.where('inventoryId').anyOf(
       inventories.map((inventory) => {return inventory.id})
     ).toArray()
+
+    // TODO Delete history
     
     db.items.bulkDelete(items.map((item) => {return item.id}));
     db.inventories.bulkDelete(items.map((inventory) => {return inventory.id}));

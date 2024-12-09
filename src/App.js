@@ -9,14 +9,14 @@ import Navbar from 'react-bootstrap/Navbar';
 import NavDropdown from 'react-bootstrap/NavDropdown';
 import {Card, Row, Col, Stack, Form, Button, Modal} from 'react-bootstrap';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faTrash, faShareFromSquare } from '@fortawesome/free-solid-svg-icons';
+import { faTrash, faShareFromSquare, faArrowRotateLeft } from '@fortawesome/free-solid-svg-icons';
 
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router";
 
 import { authContext } from './contexts';
 import { PrivateRoute } from './PrivateRoute.js';
 import { Game } from './Game.js';
-import { CreateInventory, CreateItem, DeleteInventory, DeleteItem, GetInventories, GetInventory, GetInventoryContents, MoveItem } from './InventoryAPI.js';
+import { CreateInventory, CreateItem, DeleteInventory, DeleteItem, GetInventories, GetInventory, GetInventoryContents, MoveItem, Undo } from './InventoryAPI.js';
 
 import { useParams } from "react-router";
 
@@ -124,22 +124,92 @@ function ImportDBFile() {
 function History() {
   const context = useContext(authContext);
 
-  console.log(context.user.id);
-
   const history = useLiveQuery(
-    () => db.history.where({userId: context.user.id}).toArray()
+    () => db.history.where({userId: context.user.id}).desc().toArray()
   );
 
-  console.log(history);
+  const handleClickUndo = async () => {
+    Undo(context);
+  }
 
-  const timeline = history?.map((record) => {
+  const timeline = history?.map((record, index) => {
+
+    let actionText = "";
+
+    const ts = new Intl.DateTimeFormat(undefined, {
+      dateStyle: 'short',
+      timeStyle: 'short',
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    }).format(record.ts)
+
+    switch (record.action) {
+      case "CreateItem":
+        actionText = (
+          <>
+            Created item "{record.data.name}".
+            <hr/>
+            <pre>{JSON.stringify(record.data, null, 2)}</pre>
+          </>
+        );
+        break;
+      case "UpdateItem":
+        actionText = (
+          <>
+            Updated item "{record.original.name}".
+            <hr/>
+            Before
+            <pre>{JSON.stringify(record.original, null, 2)}</pre>
+            <hr/>
+            After
+            <pre>{JSON.stringify(record.data, null, 2)}</pre>
+          </>
+        );
+        break;
+      case "DeleteItem":
+        actionText = (
+          <>
+            Deleted item "{record.data.name}".
+            <hr/>
+            <pre>{JSON.stringify(record.data, null, 2)}</pre>
+          </>
+        );
+        break;
+      case "CreateInventory":
+        actionText = (
+          <>
+            Created inventory "{record.data.name}".
+            <hr/>
+            <pre>{JSON.stringify(record.data, null, 2)}</pre>
+          </>
+        );
+        break;
+      case "DeleteInventory":
+        actionText = (
+          <>
+            Deleted inventory "{record.data.inventory.name}".
+            <hr/>
+            <pre>{JSON.stringify(record.data, null, 2)}</pre>
+          </>
+        );
+        break;
+      default:
+        break;
+    }
+
     return (
       <Card key={record.id}>
         <Card.Header className="d-flex">
-          {record.action} - {record.ts}
+          {ts}
+          { index === 0 ? 
+          <FontAwesomeIcon
+            icon={faArrowRotateLeft}
+            onClick={handleClickUndo}
+            className="ms-auto"
+          /> : null
+          }
         </Card.Header>
         <Card.Body>
-          <pre>{JSON.stringify(record.data, null, 2)}</pre>
+          {actionText}
         </Card.Body>
       </Card>
     )
@@ -168,6 +238,8 @@ function Inventory() {
 
   let params = useParams();
   const inventoryId = params.id;
+
+  const context = useContext(authContext);
   
   const [itemName, setItemName] = useState("");
   const [itemDescription, setItemDescription] = useState("");
@@ -177,10 +249,7 @@ function Inventory() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [newLocationId, setNewLocationId] = useState("");
-
   const [selectedItem, setSelectedItem] = useState("");
-
-  const context = useContext(authContext);
 
   const getInventory = () => {
     GetInventory(inventoryId, setInventory);
@@ -201,7 +270,7 @@ function Inventory() {
       'description': itemDescription,
       'inventoryId': parseInt(inventoryId)
     }
-    CreateItem(item, items, setItems);
+    CreateItem(context, item, items, setItems);
   }
 
   const handleClickDelete = (item) => {
@@ -211,7 +280,7 @@ function Inventory() {
 
   const handleClickDeleteConfirm = () => {
     setShowDeleteModal(false);
-    DeleteItem(selectedItem, items, setItems);
+    DeleteItem(context, selectedItem, items, setItems);
   }
 
   const handleAbortDeleteConfirm = () => {
@@ -225,7 +294,7 @@ function Inventory() {
 
   const handleClickMoveConfirm = () => {
     setShowMoveModal(false);
-    MoveItem(selectedItem, newLocationId, items, setItems);
+    MoveItem(context, selectedItem, newLocationId, items, setItems);
   }
 
   useEffect(() => {
@@ -380,7 +449,7 @@ function Inventories() {
       'description': inventoryDescription,
       'ownerId': context.user.id
     };
-    CreateInventory(inventory, inventories, setInventories);
+    CreateInventory(context, inventory, inventories, setInventories);
   };
 
   const deleteInventory = async (inventory) => {
